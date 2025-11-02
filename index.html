@@ -128,20 +128,20 @@
             return (
                 <div className="space-y-6">
                     {/* 심플한 헤더 섹션 */}
-                    <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg p-6 shadow-md">
+                    <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
                         <div className="flex items-center justify-between">
                             <div>
-                                <h2 className="text-2xl font-bold text-white mb-1">안녕하세요! 👋</h2>
-                                <p className="text-sm text-gray-300">오늘도 영어 학습을 시작해볼까요?</p>
+                                <h2 className="text-2xl font-bold text-gray-900 mb-1">안녕하세요! 👋</h2>
+                                <p className="text-sm text-gray-600">오늘도 영어 학습을 시작해볼까요?</p>
                             </div>
                             <div className="flex gap-4">
-                                <div className="text-center bg-white/10 backdrop-blur-sm rounded-lg px-5 py-3 border border-white/20 min-w-[80px]">
-                                    <div className="text-xs text-gray-300 uppercase tracking-wide">레벨</div>
-                                    <div className="text-xl font-bold text-white mt-1">{learningLevel}</div>
+                                <div className="text-center bg-gray-50 rounded-lg px-5 py-3 border border-gray-200 min-w-[80px]">
+                                    <div className="text-xs text-gray-500 uppercase tracking-wide">레벨</div>
+                                    <div className="text-xl font-bold text-gray-900 mt-1">{learningLevel}</div>
                                 </div>
-                                <div className="text-center bg-white/10 backdrop-blur-sm rounded-lg px-5 py-3 border border-white/20 min-w-[80px]">
-                                    <div className="text-xs text-gray-300 uppercase tracking-wide">포인트</div>
-                                    <div className="text-xl font-bold text-pink-400 mt-1">{localStorage.getItem('joyPoints') || 0}</div>
+                                <div className="text-center bg-gray-50 rounded-lg px-5 py-3 border border-gray-200 min-w-[80px]">
+                                    <div className="text-xs text-gray-500 uppercase tracking-wide">포인트</div>
+                                    <div className="text-xl font-bold text-pink-500 mt-1">{localStorage.getItem('joyPoints') || 0}</div>
                                 </div>
                             </div>
                         </div>
@@ -165,21 +165,21 @@
                                 <span className="font-medium text-gray-900">75 / 100 XP</span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-3">
-                                <div className="bg-gradient-to-r from-pink-500 to-orange-400 h-3 rounded-full transition-all" style={{width: '75%'}}></div>
+                                <div className="bg-pink-500 h-3 rounded-full transition-all" style={{width: '75%'}}></div>
                             </div>
                         </div>
                         <div className="grid grid-cols-3 gap-2 mt-4">
-                            <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg p-3 border border-yellow-200">
+                            <div className="bg-white rounded-lg p-3 border border-gray-200">
                                 <div className="text-2xl mb-1">🔥</div>
                                 <div className="text-xs text-gray-600">연속 학습</div>
                                 <div className="text-lg font-bold text-gray-900">{studyStats.currentStreak}일</div>
                             </div>
-                            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200">
+                            <div className="bg-white rounded-lg p-3 border border-gray-200">
                                 <div className="text-2xl mb-1">📚</div>
                                 <div className="text-xs text-gray-600">학습 단어</div>
                                 <div className="text-lg font-bold text-gray-900">{studyStats.wordsLearned}개</div>
                             </div>
-                            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-3 border border-green-200">
+                            <div className="bg-white rounded-lg p-3 border border-gray-200">
                                 <div className="text-2xl mb-1">✓</div>
                                 <div className="text-xs text-gray-600">완료 레슨</div>
                                 <div className="text-lg font-bold text-gray-900">{studyStats.completedLessons}개</div>
@@ -188,26 +188,26 @@
                     </div>
                     
                     {/* 획득 배지 */}
-                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-5 shadow-sm border border-purple-200">
+                    <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-200">
                         <h3 className="text-base font-bold text-gray-900 mb-3">🎖️ 최근 획득 배지</h3>
                         <div className="flex gap-3 overflow-x-auto pb-2">
-                            <div className="flex-shrink-0 text-center bg-white rounded-lg p-3 border-2 border-yellow-300 shadow-sm">
+                            <div className="flex-shrink-0 text-center bg-white rounded-lg p-3 border-2 border-pink-500 shadow-sm">
                                 <div className="text-3xl mb-1">🌟</div>
                                 <div className="text-xs font-medium text-gray-700">첫 시작</div>
                             </div>
-                            <div className="flex-shrink-0 text-center bg-white rounded-lg p-3 border-2 border-blue-300 shadow-sm">
+                            <div className="flex-shrink-0 text-center bg-white rounded-lg p-3 border-2 border-pink-500 shadow-sm">
                                 <div className="text-3xl mb-1">💬</div>
                                 <div className="text-xs font-medium text-gray-700">대화왕</div>
                             </div>
-                            <div className="flex-shrink-0 text-center bg-white rounded-lg p-3 border-2 border-green-300 shadow-sm">
+                            <div className="flex-shrink-0 text-center bg-white rounded-lg p-3 border-2 border-pink-500 shadow-sm">
                                 <div className="text-3xl mb-1">📖</div>
                                 <div className="text-xs font-medium text-gray-700">단어마스터</div>
                             </div>
-                            <div className="flex-shrink-0 text-center bg-gray-100 rounded-lg p-3 border-2 border-gray-300 opacity-50">
+                            <div className="flex-shrink-0 text-center bg-gray-50 rounded-lg p-3 border-2 border-gray-300 opacity-50">
                                 <div className="text-3xl mb-1">🔒</div>
                                 <div className="text-xs font-medium text-gray-500">잠김</div>
                             </div>
-                            <div className="flex-shrink-0 text-center bg-gray-100 rounded-lg p-3 border-2 border-gray-300 opacity-50">
+                            <div className="flex-shrink-0 text-center bg-gray-50 rounded-lg p-3 border-2 border-gray-300 opacity-50">
                                 <div className="text-3xl mb-1">🔒</div>
                                 <div className="text-xs font-medium text-gray-500">잠김</div>
                             </div>
@@ -336,7 +336,7 @@
                     </div>
 
                     {/* AI 맞춤 추천 */}
-                    <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg p-5 shadow-sm border-l-4 border-l-blue-500">
+                    <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-200">
                         <div className="flex items-start gap-3 mb-4">
                             <div className="text-2xl">🎯</div>
                             <div>
@@ -345,23 +345,23 @@
                             </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <div className="bg-white rounded-lg p-4 border-2 border-blue-200 hover:border-blue-400 transition cursor-pointer">
+                            <div className="bg-white rounded-lg p-4 border-2 border-gray-200 hover:border-pink-500 transition cursor-pointer">
                                 <div className="text-2xl mb-2">🎤</div>
                                 <div className="font-bold text-sm text-gray-900 mb-1">발음 연습</div>
                                 <div className="text-xs text-gray-600">최근 발음 점수가 낮아요</div>
-                                <div className="mt-2 text-xs font-medium text-blue-600">+20 XP 획득 가능</div>
+                                <div className="mt-2 text-xs font-medium text-pink-600">+20 XP 획득 가능</div>
                             </div>
-                            <div className="bg-white rounded-lg p-4 border-2 border-green-200 hover:border-green-400 transition cursor-pointer">
+                            <div className="bg-white rounded-lg p-4 border-2 border-gray-200 hover:border-pink-500 transition cursor-pointer">
                                 <div className="text-2xl mb-2">💬</div>
                                 <div className="font-bold text-sm text-gray-900 mb-1">대화 연습</div>
                                 <div className="text-xs text-gray-600">3일째 안 했어요</div>
-                                <div className="mt-2 text-xs font-medium text-green-600">+15 XP 획득 가능</div>
+                                <div className="mt-2 text-xs font-medium text-pink-600">+15 XP 획득 가능</div>
                             </div>
-                            <div className="bg-white rounded-lg p-4 border-2 border-purple-200 hover:border-purple-400 transition cursor-pointer">
+                            <div className="bg-white rounded-lg p-4 border-2 border-gray-200 hover:border-pink-500 transition cursor-pointer">
                                 <div className="text-2xl mb-2">📚</div>
                                 <div className="font-bold text-sm text-gray-900 mb-1">단어 복습</div>
                                 <div className="text-xs text-gray-600">10개 단어 복습 필요</div>
-                                <div className="mt-2 text-xs font-medium text-purple-600">+10 XP 획득 가능</div>
+                                <div className="mt-2 text-xs font-medium text-pink-600">+10 XP 획득 가능</div>
                             </div>
                         </div>
                     </div>
@@ -1385,19 +1385,19 @@
                     </div>
                     
                     {/* 발음 점수 */}
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-5 shadow-sm border border-blue-200">
+                    <div className="bg-white rounded-lg p-5 shadow-sm border-l-4 border-l-pink-500">
                         <div className="flex items-center justify-between">
                             <div>
                                 <h3 className="text-sm font-medium text-gray-600 mb-1">평균 발음 점수</h3>
-                                <div className="text-3xl font-bold text-blue-600">82 <span className="text-lg text-gray-500">/ 100</span></div>
+                                <div className="text-3xl font-bold text-pink-600">82 <span className="text-lg text-gray-500">/ 100</span></div>
                             </div>
                             <div className="text-right">
                                 <div className="text-sm text-gray-600 mb-1">이번 주 진도</div>
-                                <div className="text-2xl font-bold text-green-500">+5%</div>
+                                <div className="text-2xl font-bold text-pink-500">+5%</div>
                             </div>
                         </div>
                         <div className="mt-3 w-full bg-gray-200 rounded-full h-2">
-                            <div className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full" style={{width: '82%'}}></div>
+                            <div className="bg-pink-500 h-2 rounded-full" style={{width: '82%'}}></div>
                         </div>
                     </div>
                     
@@ -1502,7 +1502,7 @@
                     </div>
                     
                     {/* 주간 랭킹 */}
-                    <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg p-6 shadow-sm border-2 border-yellow-200">
+                    <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
                         <h3 className="text-xl font-bold text-gray-900 mb-4">🏆 이번 주 TOP 10</h3>
                         <div className="space-y-2">
                             {[
@@ -1606,7 +1606,7 @@
             };
 
             return (
-                <main className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-50">
+                <main className="min-h-screen bg-gray-50">
                     {/* Level Selection Modal */}
                     {showLevelSelector && (
                         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
