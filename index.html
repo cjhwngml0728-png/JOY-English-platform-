@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JoyTalk - 즐거운 영어 학습</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+                'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        /* Joy 브랜드 컬러 */
+        :root {
+            --joy-primary: #FF6B9D;
+            --joy-secondary: #FFA07A;
+            --joy-accent: #FFD93D;
+            --joy-success: #6BCB77;
+            --joy-info: #4D96FF;
+        }
+        
+        .joy-gradient {
+            background: linear-gradient(135deg, #FF6B9D 0%, #FFA07A 50%, #FFD93D 100%);
+        }
+        
+        .joy-text-gradient {
+            background: linear-gradient(135deg, #FF6B9D, #FFA07A);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .joy-float {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        .joy-card {
+            transition: all 0.3s ease;
+        }
+        
+        .joy-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(255, 107, 157, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Components
+        function StudyDashboard() {
+            const [studyStats] = useState({
+                totalStudyTime: 0,
+                wordsLearned: 0,
+                currentStreak: 0,
+                completedLessons: 0
+            });
+
+            const learningLevel = localStorage.getItem('learningLevel') || '미설정';
+            
+            // 학습 목표 관리
+            const defaultGoals = [
+                { id: 1, text: '단어 10개 학습하기', icon: '', color: 'gray', completed: false },
+                { id: 2, text: 'AI 튜터와 대화 5분', icon: '', color: 'gray', completed: false },
+                { id: 3, text: '단어 퀴즈 풀기', icon: '', color: 'gray', completed: false }
+            ];
+            
+            const [goals, setGoals] = useState(() => {
+                const saved = localStorage.getItem('studyGoals');
+                return saved ? JSON.parse(saved) : defaultGoals;
+            });
+            
+            const [showAddGoal, setShowAddGoal] = useState(false);
+            const [newGoalText, setNewGoalText] = useState('');
+
+            const toggleGoal = (id) => {
+                const updatedGoals = goals.map(goal => 
+                    goal.id === id ? { ...goal, completed: !goal.completed } : goal
+                );
+                setGoals(updatedGoals);
+                localStorage.setItem('studyGoals', JSON.stringify(updatedGoals));
+            };
+
+            const addGoal = () => {
+                if (newGoalText.trim()) {
+                    const newGoal = {
+                        id: Date.now(),
+                        text: newGoalText,
+                        icon: '',
+                        color: 'gray',
+                        completed: false
+                    };
+                    const updatedGoals = [...goals, newGoal];
+                    setGoals(updatedGoals);
+                    localStorage.setItem('studyGoals', JSON.stringify(updatedGoals));
+                    setNewGoalText('');
+                    setShowAddGoal(false);
+                }
+            };
+
+            const deleteGoal = (id) => {
+                const updatedGoals = goals.filter(goal => goal.id !== id);
+                setGoals(updatedGoals);
+                localStorage.setItem('studyGoals', JSON.stringify(updatedGoals));
+            };
+
+            const resetGoals = () => {
+                setGoals(defaultGoals);
+                localStorage.setItem('studyGoals', JSON.stringify(defaultGoals));
+            };
+
+            return (
+                <div className="space-y-6">
+                    {/* 심플한 헤더 섹션 */}
+                    <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg p-6 shadow-md">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h2 className="text-2xl font-bold text-white mb-1">안녕하세요! 👋</h2>
+                                <p className="text-sm text-gray-300">오늘도 영어 학습을 시작해볼까요?</p>
+                            </div>
+                            <div className="flex gap-4">
+                                <div className="text-center bg-white/10 backdrop-blur-sm rounded-lg px-5 py-3 border border-white/20 min-w-[80px]">
+                                    <div className="text-xs text-gray-300 uppercase tracking-wide">레벨</div>
+                                    <div className="text-xl font-bold text-white mt-1">{learningLevel}</div>
+                                </div>
+                                <div className="text-center bg-white/10 backdrop-blur-sm rounded-lg px-5 py-3 border border-white/20 min-w-[80px]">
+                                    <div className="text-xs text-gray-300 uppercase tracking-wide">포인트</div>
+                                    <div className="text-xl font-bold text-pink-400 mt-1">{localStorage.getItem('joyPoints') || 0}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* 통계 카드 - 심플 버전 */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-200 hover:shadow-md transition">
+                            <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">학습 시간</div>
+                            <div className="flex items-baseline gap-2">
+                                <div className="text-3xl font-bold text-gray-900">{studyStats.totalStudyTime}</div>
+                                <div className="text-sm text-gray-500">분</div>
+                            </div>
+                            <div className="text-xs text-gray-400 mt-1">이번 주</div>
+                        </div>
+                        
+                        <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-200 hover:shadow-md transition">
+                            <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">학습 단어</div>
+                            <div className="flex items-baseline gap-2">
+                                <div className="text-3xl font-bold text-gray-900">{studyStats.wordsLearned}</div>
+                                <div className="text-sm text-gray-500">개</div>
+                            </div>
+                            <div className="text-xs text-gray-400 mt-1">전체 누적</div>
+                        </div>
+                        
+                        <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-200 hover:shadow-md transition">
+                            <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">연속 학습</div>
+                            <div className="flex items-baseline gap-2">
+                                <div className="text-3xl font-bold text-gray-900">{studyStats.currentStreak}</div>
+                                <div className="text-sm text-gray-500">일</div>
+                            </div>
+                            <div className="text-xs text-gray-400 mt-1">Keep going! 🔥</div>
+                        </div>
+                        
+                        <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-200 hover:shadow-md transition">
+                            <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">완료 레슨</div>
+                            <div className="flex items-baseline gap-2">
+                                <div className="text-3xl font-bold text-gray-900">{studyStats.completedLessons}</div>
+                                <div className="text-sm text-gray-500">개</div>
+                            </div>
+                            <div className="text-xs text-gray-400 mt-1">이번 달</div>
+                        </div>
+                    </div>
+
+                    {/* 오늘의 목표 & 추천 활동 */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {/* 오늘의 목표 */}
+                        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-bold text-gray-800">
+                                    오늘의 목표
+                                </h3>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setShowAddGoal(!showAddGoal)}
+                                        className="px-3 py-1 bg-gray-800 text-white text-xs rounded-md hover:bg-gray-900 transition"
+                                    >
+                                        + 추가
+                                    </button>
+                                    <button
+                                        onClick={resetGoals}
+                                        className="px-3 py-1 bg-gray-200 text-gray-600 text-xs rounded-md hover:bg-gray-300 transition"
+                                        title="초기화"
+                                    >
+                                        ↻
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* 목표 추가 입력창 */}
+                            {showAddGoal && (
+                                <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                    <input
+                                        type="text"
+                                        value={newGoalText}
+                                        onChange={(e) => setNewGoalText(e.target.value)}
+                                        onKeyPress={(e) => e.key === 'Enter' && addGoal()}
+                                        placeholder="새로운 목표를 입력하세요..."
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
+                                    />
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={addGoal}
+                                            className="px-4 py-2 bg-gray-800 text-white text-sm rounded-md hover:bg-gray-900 transition"
+                                        >
+                                            추가
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setShowAddGoal(false);
+                                                setNewGoalText('');
+                                            }}
+                                            className="px-4 py-2 bg-gray-200 text-gray-700 text-sm rounded-md hover:bg-gray-300 transition"
+                                        >
+                                            취소
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                            
+                            <div className="space-y-2">
+                                {goals.length === 0 ? (
+                                    <div className="text-center py-8 text-gray-400 text-sm">
+                                        목표를 추가해보세요
+                                    </div>
+                                ) : (
+                                    goals.map((goal, index) => (
+                                        <div 
+                                            key={goal.id}
+                                            className={`flex items-center p-3 rounded-lg border transition ${
+                                                goal.completed 
+                                                    ? 'bg-gray-50 border-gray-200' 
+                                                    : 'bg-white border-gray-200 hover:border-gray-300'
+                                            }`}
+                                        >
+                                            <button
+                                                onClick={() => toggleGoal(goal.id)}
+                                                className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-medium mr-3 transition ${
+                                                    goal.completed
+                                                        ? 'bg-green-500 text-white'
+                                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
+                                                }`}
+                                            >
+                                                {goal.completed ? '✓' : index + 1}
+                                            </button>
+                                            <div className="flex-1">
+                                                <div className={`text-sm ${goal.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+                                                    {goal.text}
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => deleteGoal(goal.id)}
+                                                className="ml-2 text-gray-400 hover:text-red-500 transition text-sm"
+                                                title="삭제"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {/* 추천 활동 */}
+                        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+                            <h3 className="text-lg font-bold text-gray-800 mb-4">
+                                추천 학습 활동
+                            </h3>
+                            <div className="space-y-3">
+                                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition">
+                                    <div className="font-medium text-gray-800 mb-1 text-sm">레벨별 단어 학습</div>
+                                    <p className="text-xs text-gray-600">현재 레벨에 맞는 단어를 학습하세요</p>
+                                </div>
+                                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition">
+                                    <div className="font-medium text-gray-800 mb-1 text-sm">상황별 표현 배우기</div>
+                                    <p className="text-xs text-gray-600">AI 튜터에게 다양한 상황을 물어보세요</p>
+                                </div>
+                                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition">
+                                    <div className="font-medium text-gray-800 mb-1 text-sm">퀴즈로 실력 테스트</div>
+                                    <p className="text-xs text-gray-600">배운 단어를 퀴즈로 확인해보세요</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 학습 팁 */}
+                    <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-200 border-l-4 border-l-pink-500">
+                        <div className="flex items-start gap-3">
+                            <div className="text-2xl">💡</div>
+                            <div>
+                                <h4 className="font-bold text-base text-gray-900 mb-2">오늘의 팁</h4>
+                                <p className="text-sm leading-relaxed text-gray-700">
+                                    매일 꾸준히 학습하는 것이 가장 중요합니다. 하루 15분만 투자해도 충분해요. 
+                                    <span className="font-medium text-pink-500"> 함께 즐겁게 배워봐요!</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function VocabularyLearning() {
+            const learningLevel = localStorage.getItem('learningLevel') || '중급';
+            
+            // 레벨별 단어 데이터
+            const vocabularyByLevel = {
+                '초급': [
+                    { id: 1, word: 'Happy', meaning: '행복한', example: 'I am happy to see you.', learned: false },
+                    { id: 2, word: 'Tired', meaning: '피곤한', example: 'I feel tired today.', learned: false },
+                    { id: 3, word: 'Hungry', meaning: '배고픈', example: 'Are you hungry?', learned: false },
+                    { id: 4, word: 'Easy', meaning: '쉬운', example: 'This test is easy.', learned: false },
+                    { id: 5, word: 'Friend', meaning: '친구', example: 'She is my best friend.', learned: false },
+                    { id: 6, word: 'House', meaning: '집', example: 'I live in a big house.', learned: false },
+                    { id: 7, word: 'Beautiful', meaning: '아름다운', example: 'What a beautiful day!', learned: false },
+                    { id: 8, word: 'Important', meaning: '중요한', example: 'This is very important.', learned: false }
+                ],
+                '중급': [
+                    { id: 1, word: 'Achieve', meaning: '달성하다', example: 'I want to achieve my goals.', learned: false },
+                    { id: 2, word: 'Curious', meaning: '호기심 있는', example: 'I am curious about your story.', learned: false },
+                    { id: 3, word: 'Efficient', meaning: '효율적인', example: 'She works in an efficient way.', learned: false },
+                    { id: 4, word: 'Perspective', meaning: '관점, 시각', example: 'Try to see things from my perspective.', learned: false },
+                    { id: 5, word: 'Recommend', meaning: '추천하다', example: 'I recommend this restaurant.', learned: false },
+                    { id: 6, word: 'Necessary', meaning: '필요한', example: 'Sleep is necessary for health.', learned: false },
+                    { id: 7, word: 'Experience', meaning: '경험', example: 'I have no experience in this field.', learned: false },
+                    { id: 8, word: 'Opportunity', meaning: '기회', example: 'This is a great opportunity.', learned: false }
+                ],
+                '고급': [
+                    { id: 1, word: 'Serendipity', meaning: '뜻밖의 행운', example: 'Finding this cafe was pure serendipity.', learned: false },
+                    { id: 2, word: 'Ephemeral', meaning: '덧없는, 일시적인', example: 'The beauty of cherry blossoms is ephemeral.', learned: false },
+                    { id: 3, word: 'Eloquent', meaning: '웅변의, 설득력 있는', example: 'She gave an eloquent speech.', learned: false },
+                    { id: 4, word: 'Resilient', meaning: '회복력이 있는', example: 'Children are remarkably resilient.', learned: false },
+                    { id: 5, word: 'Ambiguous', meaning: '애매한, 모호한', example: 'His answer was quite ambiguous.', learned: false },
+                    { id: 6, word: 'Diligent', meaning: '부지런한, 성실한', example: 'She is a diligent student.', learned: false },
+                    { id: 7, word: 'Inevitable', meaning: '피할 수 없는', example: 'Change is inevitable.', learned: false },
+                    { id: 8, word: 'Comprehend', meaning: '이해하다', example: 'It is hard to comprehend this theory.', learned: false }
+                ]
+            };
+
+            const vocabularyCards = vocabularyByLevel[learningLevel] || vocabularyByLevel['중급'];
+
+            const [expandedId, setExpandedId] = useState(null);
+            const [activeTab, setActiveTab] = useState('list');
+            const [quizIndex, setQuizIndex] = useState(0);
+            const [selectedAnswer, setSelectedAnswer] = useState(null);
+            const [showResult, setShowResult] = useState(false);
+            const [score, setScore] = useState(0);
+            const [options, setOptions] = useState([]);
+
+            // 퀴즈 옵션 생성
+            const generateOptions = (correctAnswer, allCards) => {
+                const wrongAnswers = allCards
+                    .filter(card => card.meaning !== correctAnswer)
+                    .sort(() => Math.random() - 0.5)
+                    .slice(0, 3)
+                    .map(card => card.meaning);
+                
+                const allOptions = [...wrongAnswers, correctAnswer];
+                return allOptions.sort(() => Math.random() - 0.5);
+            };
+
+            const handleAnswerSelect = (answer) => {
+                setSelectedAnswer(answer);
+                setShowResult(true);
+                if (answer === vocabularyCards[quizIndex].meaning) {
+                    setScore(score + 1);
+                }
+            };
+
+            const handleNextQuiz = () => {
+                if (quizIndex < vocabularyCards.length - 1) {
+                    setQuizIndex(quizIndex + 1);
+                    setSelectedAnswer(null);
+                    setShowResult(false);
+                    setOptions(generateOptions(vocabularyCards[quizIndex + 1].meaning, vocabularyCards));
+                } else {
+                    alert(`퀴즈 완료! 최종 점수: ${score + (selectedAnswer === vocabularyCards[quizIndex].meaning ? 1 : 0)}/${vocabularyCards.length}`);
+                    setQuizIndex(0);
+                    setScore(0);
+                    setSelectedAnswer(null);
+                    setShowResult(false);
+                    setOptions(generateOptions(vocabularyCards[0].meaning, vocabularyCards));
+                }
+            };
+
+            // 퀴즈 시작 시 옵션 초기화
+            React.useEffect(() => {
+                if (activeTab === 'quiz' && options.length === 0) {
+                    setOptions(generateOptions(vocabularyCards[quizIndex].meaning, vocabularyCards));
+                }
+            }, [activeTab]);
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-3xl font-bold text-gray-800">📖 어휘 학습</h2>
+                        <div className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-full font-medium">
+                            {learningLevel} 레벨
+                        </div>
+                    </div>
+                    
+                    {/* Tabs */}
+                    <div className="flex gap-4 border-b border-gray-200">
+                        <button
+                            onClick={() => setActiveTab('list')}
+                            className={`px-4 py-2 font-medium transition-colors ${
+                                activeTab === 'list'
+                                    ? 'text-blue-600 border-b-2 border-blue-600'
+                                    : 'text-gray-600 hover:text-blue-600'
+                            }`}
+                        >
+                            📚 단어 리스트
+                        </button>
+                        <button
+                            onClick={() => {
+                                setActiveTab('quiz');
+                                setQuizIndex(0);
+                                setScore(0);
+                                setShowAnswer(false);
+                            }}
+                            className={`px-4 py-2 font-medium transition-colors ${
+                                activeTab === 'quiz'
+                                    ? 'text-blue-600 border-b-2 border-blue-600'
+                                    : 'text-gray-600 hover:text-blue-600'
+                            }`}
+                        >
+                            ✏️ 단어 퀴즈
+                        </button>
+                    </div>
+
+                    {/* 단어 리스트 */}
+                    {activeTab === 'list' && (
+                        <>
+                            <div className="grid gap-4">
+                                {vocabularyCards.map((card) => (
+                                    <div 
+                                        key={card.id}
+                                        className="bg-white border-2 border-gray-200 rounded-lg p-5 hover:border-indigo-400 transition-all cursor-pointer"
+                                        onClick={() => setExpandedId(expandedId === card.id ? null : card.id)}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-2xl font-bold text-indigo-600">{card.word}</span>
+                                                    {expandedId === card.id && (
+                                                        <span className="text-lg text-gray-600">- {card.meaning}</span>
+                                                    )}
+                                                </div>
+                                                {expandedId === card.id && (
+                                                    <div className="mt-3 pt-3 border-t border-gray-200">
+                                                        <p className="text-gray-700 italic">"{card.example}"</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="text-gray-400">
+                                                {expandedId === card.id ? '▲' : '▼'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                <p className="text-sm text-gray-700">
+                                    💡 <strong>팁:</strong> 각 단어를 클릭하면 뜻과 예문을 확인할 수 있습니다.
+                                </p>
+                            </div>
+                        </>
+                    )}
+
+                    {/* 단어 퀴즈 */}
+                    {activeTab === 'quiz' && (
+                        <div className="max-w-2xl mx-auto">
+                            <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl p-8 text-white shadow-2xl">
+                                <div className="flex justify-between items-center mb-6">
+                                    <span className="text-sm opacity-90">문제 {quizIndex + 1} / {vocabularyCards.length}</span>
+                                    <span className="text-sm font-bold bg-white/20 px-4 py-1 rounded-full">점수: {score}</span>
+                                </div>
+                                
+                                <div className="space-y-6">
+                                    <div className="text-center">
+                                        <div className="text-5xl font-bold mb-2">
+                                            {vocabularyCards[quizIndex].word}
+                                        </div>
+                                        <div className="text-lg opacity-90">
+                                            이 단어의 뜻은?
+                                        </div>
+                                    </div>
+
+                                    {/* 객관식 보기 */}
+                                    <div className="space-y-3">
+                                        {options.map((option, idx) => {
+                                            const isSelected = selectedAnswer === option;
+                                            const isCorrect = option === vocabularyCards[quizIndex].meaning;
+                                            let buttonClass = 'w-full p-4 rounded-lg font-medium transition text-left ';
+                                            
+                                            if (!showResult) {
+                                                buttonClass += 'bg-white/10 hover:bg-white/20 border-2 border-white/30';
+                                            } else if (isSelected && isCorrect) {
+                                                buttonClass += 'bg-green-500 border-2 border-green-300';
+                                            } else if (isSelected && !isCorrect) {
+                                                buttonClass += 'bg-red-500 border-2 border-red-300';
+                                            } else if (isCorrect) {
+                                                buttonClass += 'bg-green-500 border-2 border-green-300';
+                                            } else {
+                                                buttonClass += 'bg-white/10 border-2 border-white/30 opacity-50';
+                                            }
+                                            
+                                            return (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => !showResult && handleAnswerSelect(option)}
+                                                    disabled={showResult}
+                                                    className={buttonClass}
+                                                >
+                                                    <span className="text-lg">
+                                                        {String.fromCharCode(65 + idx)}. {option}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* 결과 및 예문 */}
+                                    {showResult && (
+                                        <div className="space-y-4 pt-4 border-t border-white/30">
+                                            <div className="text-center">
+                                                {selectedAnswer === vocabularyCards[quizIndex].meaning ? (
+                                                    <div className="text-2xl font-bold text-green-200">✓ 정답입니다!</div>
+                                                ) : (
+                                                    <div className="text-2xl font-bold text-red-200">✗ 틀렸습니다!</div>
+                                                )}
+                                            </div>
+                                            <div className="bg-white/10 rounded-lg p-4">
+                                                <div className="text-sm opacity-75 mb-1">예문:</div>
+                                                <div className="italic">"{vocabularyCards[quizIndex].example}"</div>
+                                            </div>
+                                            <button
+                                                onClick={handleNextQuiz}
+                                                className="w-full px-6 py-3 bg-white text-purple-600 rounded-lg font-bold hover:bg-gray-100 transition"
+                                            >
+                                                {quizIndex < vocabularyCards.length - 1 ? '다음 문제 →' : '결과 보기'}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function AITutorChat() {
+            const [activeTab, setActiveTab] = useState('chat'); // 'chat' or 'roleplay'
+            const [messages, setMessages] = useState([
+                { role: 'assistant', content: '안녕하세요! 저는 Joy예요! 😊✨\n\n영어 학습을 즐겁게 도와드릴게요!\n\n저에게 이렇게 물어보세요:\n• "식당에서" - 상황별 영어 표현\n• "배고파" - 한국어를 영어로 번역\n• "과거완료 설명해줘" - 문법 설명\n• "안녕" - 자유로운 대화\n\n함께 즐겁게 배워봐요! 💕' }
+            ]);
+            const [inputMessage, setInputMessage] = useState('');
+            
+            // 롤플레잉 상태
+            const [selectedScenario, setSelectedScenario] = useState(null);
+            const [conversation, setConversation] = useState([]);
+            const [userInput, setUserInput] = useState('');
+            const [currentStep, setCurrentStep] = useState(0);
+
+            // 상황별 영어 표현 데이터베이스
+            const situationExpressions = {
+                '식당': [
+                    '📍 "Can I see the menu, please?" - 메뉴판 좀 볼 수 있을까요?',
+                    '📍 "I\'d like to order..." - ...을 주문하고 싶습니다.',
+                    '📍 "Could I have the bill, please?" - 계산서 주세요.',
+                    '📍 "Is this spicy?" - 이거 매운가요?',
+                    '📍 "Can I get this to go?" - 포장 가능한가요?'
+                ],
+                '주문': [
+                    '📍 "I\'d like to order..." - ...을 주문하고 싶습니다.',
+                    '📍 "Can I get...?" - ...로 주세요.',
+                    '📍 "I\'ll have the..." - ...로 할게요.',
+                    '📍 "Could you recommend something?" - 추천해주실 수 있나요?',
+                    '📍 "How long will it take?" - 얼마나 걸리나요?'
+                ],
+                '면접': [
+                    '📍 "Thank you for this opportunity." - 이 기회를 주셔서 감사합니다.',
+                    '📍 "I\'m very interested in this position." - 이 직책에 매우 관심이 있습니다.',
+                    '📍 "My strength is..." - 제 강점은 ...입니다.',
+                    '📍 "I have experience in..." - 저는 ...에 경험이 있습니다.',
+                    '📍 "Could you tell me more about...?" - ...에 대해 더 말씀해주시겠어요?'
+                ],
+                '사과': [
+                    '📍 "I\'m really sorry about..." - ...에 대해 정말 죄송합니다.',
+                    '📍 "I apologize for..." - ...에 대해 사과드립니다.',
+                    '📍 "It was my mistake." - 제 실수였습니다.',
+                    '📍 "I didn\'t mean to..." - ...할 의도는 아니었어요.',
+                    '📍 "Can you forgive me?" - 용서해주실 수 있나요?'
+                ],
+                '감사': [
+                    '📍 "Thank you so much!" - 정말 감사합니다!',
+                    '📍 "I really appreciate it." - 정말 감사드립니다.',
+                    '📍 "That\'s very kind of you." - 정말 친절하시네요.',
+                    '📍 "I owe you one." - 신세 졌습니다.',
+                    '📍 "Thanks for your help!" - 도와주셔서 감사해요!'
+                ],
+                '쇼핑': [
+                    '📍 "How much is this?" - 이거 얼마예요?',
+                    '📍 "Can I try this on?" - 입어봐도 될까요?',
+                    '📍 "Do you have this in another size?" - 다른 사이즈 있나요?',
+                    '📍 "I\'m just looking, thanks." - 그냥 구경 중이에요, 감사합니다.',
+                    '📍 "Do you accept credit cards?" - 카드 되나요?'
+                ],
+                '길': [
+                    '📍 "Excuse me, how do I get to...?" - 실례합니다, ...에 어떻게 가나요?',
+                    '📍 "Could you point me in the right direction?" - 방향 좀 알려주시겠어요?',
+                    '📍 "Is it far from here?" - 여기서 먼가요?',
+                    '📍 "Can I walk there?" - 걸어갈 수 있나요?',
+                    '📍 "Where is the nearest subway station?" - 가장 가까운 지하철역이 어디인가요?'
+                ],
+                '호텔': [
+                    '📍 "I have a reservation under..." - ...로 예약했습니다.',
+                    '📍 "What time is check-out?" - 체크아웃 시간이 언제인가요?',
+                    '📍 "Could I get a wake-up call?" - 모닝콜 부탁드려도 될까요?',
+                    '📍 "Is breakfast included?" - 조식이 포함되어 있나요?',
+                    '📍 "The wifi isn\'t working." - 와이파이가 안 되네요.'
+                ],
+                '전화': [
+                    '📍 "May I speak to...?" - ...와 통화할 수 있을까요?',
+                    '📍 "Could you speak more slowly?" - 좀 더 천천히 말씀해주시겠어요?',
+                    '📍 "I\'ll call you back later." - 나중에 다시 전화드릴게요.',
+                    '📍 "Can you hear me?" - 제 목소리 들리나요?',
+                    '📍 "Sorry, wrong number." - 죄송합니다, 잘못 걸었습니다.'
+                ],
+                '회의': [
+                    '📍 "Let\'s get started." - 시작하겠습니다.',
+                    '📍 "What do you think about...?" - ...에 대해 어떻게 생각하시나요?',
+                    '📍 "I agree with..." - ...에 동의합니다.',
+                    '📍 "Could you clarify that?" - 그것을 명확히 해주시겠어요?',
+                    '📍 "Let\'s move on to the next topic." - 다음 주제로 넘어가겠습니다.'
+                ]
+            };
+
+            const handleSendMessage = () => {
+                if (!inputMessage.trim()) return;
+
+                const userMsg = inputMessage.trim().toLowerCase();
+                let response = '';
+
+                // 1. 상황별 표현 검색
+                const matchedSituations = [];
+                for (const [situation, expressions] of Object.entries(situationExpressions)) {
+                    if (userMsg.includes(situation)) {
+                        matchedSituations.push({ situation, expressions });
+                    }
+                }
+
+                if (matchedSituations.length > 0) {
+                    response = matchedSituations.map(({ situation, expressions }) => 
+                        `**${situation}에서 사용할 수 있는 표현들:**\n\n${expressions.join('\n')}`
+                    ).join('\n\n---\n\n');
+                }
+                // 2. 문법 질문 응답
+                else if (userMsg.includes('문법') || userMsg.includes('과거') || userMsg.includes('현재') || userMsg.includes('미래')) {
+                    if (userMsg.includes('과거완료') || userMsg.includes('had')) {
+                        response = '**과거완료 시제 (Past Perfect)**\n\n형태: had + 과거분사\n\n사용:\n• 과거의 특정 시점보다 더 이전에 일어난 일\n• "I had finished my homework before dinner."\n  (저녁 먹기 전에 숙제를 끝냈었다)\n\n더 궁금한 점이 있으시면 물어보세요!';
+                    } else if (userMsg.includes('현재완료')) {
+                        response = '**현재완료 시제 (Present Perfect)**\n\n형태: have/has + 과거분사\n\n사용:\n• 과거에 시작되어 현재까지 계속되는 일\n• 과거에 일어났지만 현재와 관련이 있는 일\n\n예: "I have lived here for 5 years."\n   (5년 동안 여기 살아왔다)';
+                    } else {
+                        response = '문법에 대해 궁금하신가요?\n\n다음과 같이 구체적으로 물어보세요:\n• "과거완료 설명해줘"\n• "현재완료는 언제 써?"\n• "to 부정사와 동명사 차이"\n• "관계대명사 사용법"';
+                    }
+                }
+                // 3. 영작 질문 및 번역
+                else if (userMsg.includes('영어로') || userMsg.includes('영작') || userMsg.includes('번역')) {
+                    // 구체적인 번역 요청 패턴 찾기
+                    const translationPatterns = [
+                        { ko: ['오늘 날씨가 좋네요', '날씨가 좋네요', '날씨 좋다'], en: 'The weather is nice today.' },
+                        { ko: ['수고하셨습니다', '수고하세요', '고생하셨습니다'], en: 'Good job! / Thank you for your hard work.' },
+                        { ko: ['미안하지만 안 될 것 같아', '안 될 것 같아', '어려울 것 같아'], en: 'I\'m sorry, but I don\'t think it will work.' },
+                        { ko: ['잘 지내?', '잘 지내', '어떻게 지내'], en: 'How are you doing?' },
+                        { ko: ['오랜만이야', '오랜만', '오랜만이에요'], en: 'Long time no see!' },
+                        { ko: ['뭐해?', '뭐 해', '뭐하니', '뭐 하니'], en: 'What are you doing?' },
+                        { ko: ['배고파', '배 고파', '배고프다'], en: 'I\'m hungry.' },
+                        { ko: ['피곤해', '피곤하다', '힘들어'], en: 'I\'m tired.' },
+                        { ko: ['시간 있어?', '시간 있어', '시간 되?'], en: 'Do you have time?' },
+                        { ko: ['나중에 봐', '나중에 보자', '다음에 봐'], en: 'See you later!' },
+                        { ko: ['도와줄까?', '도와줄까', '도와드릴까요'], en: 'Can I help you?' },
+                        { ko: ['괜찮아', '괜찮아요', '괜찮습니다'], en: 'It\'s okay. / I\'m fine.' },
+                        { ko: ['잘했어', '잘했다', '잘하네'], en: 'Good job! / Well done!' },
+                        { ko: ['화이팅', '파이팅', '힘내'], en: 'You can do it! / Good luck!' },
+                        { ko: ['조심해', '조심하세요', '안전하게'], en: 'Be careful! / Take care!' },
+                        { ko: ['고마워', '감사합니다', '고맙습니다', '감사해요'], en: 'Thank you!' },
+                        { ko: ['미안해', '죄송합니다', '미안합니다'], en: 'I\'m sorry.' },
+                        { ko: ['사랑해', '사랑합니다'], en: 'I love you.' },
+                        { ko: ['축하해', '축하합니다', '축하드려요'], en: 'Congratulations!' },
+                        { ko: ['생일 축하해', '생일 축하합니다'], en: 'Happy birthday!' },
+                        { ko: ['안녕', '안녕하세요', '안녕하십니까'], en: 'Hello! / Hi!' },
+                        { ko: ['잘가', '잘 가', '안녕히 가세요'], en: 'Goodbye! / Bye!' },
+                        { ko: ['좋아', '좋아요', '좋습니다'], en: 'Good! / I like it!' },
+                        { ko: ['싫어', '싫어요', '싫습니다'], en: 'I don\'t like it. / No, thanks.' },
+                        { ko: ['몰라', '모르겠어', '모르겠습니다'], en: 'I don\'t know.' },
+                        { ko: ['알겠어', '알았어', '알겠습니다'], en: 'I understand. / Got it.' },
+                        { ko: ['맞아', '그래', '맞아요'], en: 'That\'s right. / Yes.' },
+                        { ko: ['아니야', '아니에요', '아닙니다'], en: 'No. / That\'s not right.' },
+                        { ko: ['부탁해', '부탁드립니다', '부탁할게'], en: 'Please. / I\'m asking you.' },
+                        { ko: ['어떻게', '어떻게 해', '어떻게 하지'], en: 'How? / What should I do?' },
+                        { ko: ['왜?', '왜요', '왜 그래'], en: 'Why? / What\'s wrong?' },
+                        { ko: ['언제?', '언제요', '언제인가요'], en: 'When?' },
+                        { ko: ['어디?', '어디요', '어디예요'], en: 'Where?' },
+                        { ko: ['뭐?', '무엇', '뭐라고'], en: 'What?' },
+                        { ko: ['누구?', '누구예요', '누구세요'], en: 'Who?' },
+                        { ko: ['얼마?', '얼마예요', '가격이'], en: 'How much?' }
+                    ];
+                    
+                    let found = false;
+                    for (const pattern of translationPatterns) {
+                        for (const variant of pattern.ko) {
+                            if (inputMessage.includes(variant)) {
+                                response = `**"${pattern.ko[0]}"를 영어로:**\n\n✨ ${pattern.en}\n\n💡 더 궁금한 표현이 있으시면 말씀해주세요!`;
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (found) break;
+                    }
+                    
+                    if (!found) {
+                        // 한글이 포함되어 있는지 확인
+                        const hasKorean = /[가-힣]/.test(inputMessage);
+                        if (hasKorean) {
+                            // "영어로", "번역", "영작" 제거하고 실제 한국어만 추출
+                            const koreanText = inputMessage
+                                .replace(/영어로/g, '')
+                                .replace(/번역/g, '')
+                                .replace(/영작/g, '')
+                                .replace(/해줘/g, '')
+                                .replace(/알려줘/g, '')
+                                .trim();
+                            
+                            response = `"${koreanText}"에 대한 번역을 찾지 못했습니다. 😢\n\n더 많은 표현을 추가하고 있어요!\n\n현재 지원하는 표현:\n• 인사: 안녕, 잘가, 오랜만\n• 감정: 배고파, 피곤해, 좋아, 싫어\n• 감사/사과: 고마워, 미안해\n• 질문: 뭐해? 어디? 언제? 얼마?\n• 기타: 잘했어, 화이팅, 조심해\n\n다른 표현을 시도해보세요!`;
+                        } else {
+                            response = '영작을 도와드릴게요!\n\n번역하고 싶은 한국어를 그냥 입력하시거나 "~를 영어로" 형태로 물어보세요.\n\n예시:\n• "배고파"\n• "오늘 날씨가 좋네요 영어로"\n• "수고하셨습니다 번역"\n• "고마워"';
+                        }
+                    }
+                }
+                // 4. 인사 및 일상 대화
+                else if (userMsg.includes('안녕') || userMsg.includes('hello') || userMsg.includes('hi')) {
+                    response = 'Hello! 반갑습니다! 😊\n\n영어 학습을 도와드릴게요. 궁금한 점이나 배우고 싶은 표현을 자유롭게 물어보세요!';
+                }
+                else if (userMsg.includes('고마') || userMsg.includes('감사') || userMsg.includes('thanks')) {
+                    response = 'You\'re welcome! 천만에요! 😊\n\n더 도움이 필요하시면 언제든 말씀해주세요!';
+                }
+                // 5. 기타 질문
+                else {
+                    response = `"${inputMessage}"에 대해 답변드릴게요!\n\n제가 도울 수 있는 것들:\n\n• **상황별 표현**: "식당에서", "면접 볼 때" 등\n• **문법 설명**: "과거완료 설명해줘"\n• **영작 도움**: "~를 영어로 말하면?"\n• **일상 대화**: 자유롭게 대화해요!\n\n더 구체적으로 질문해주시면 정확한 답변을 드릴 수 있어요! 😊`;
+                }
+
+                setMessages([...messages, 
+                    { role: 'user', content: inputMessage },
+                    { role: 'assistant', content: response }
+                ]);
+                setInputMessage('');
+            };
+
+            // 롤플레잉 시나리오
+            const scenarios = [
+                { 
+                    id: 1, 
+                    title: '공항', 
+                    icon: '✈️', 
+                    dialogues: [
+                        { 
+                            joy: "Hello! Welcome to the airport. May I see your passport and ticket, please?",
+                            hints: ["Sure, here you are.", "Yes, here's my passport."],
+                            feedback: "Great! 여권 제시 표현을 잘 하셨어요."
+                        },
+                        { 
+                            joy: "Thank you. Are you checking any bags today?",
+                            hints: ["Yes, I have one suitcase.", "No, just carry-on."],
+                            feedback: "Perfect! 수하물 답변을 잘 했어요."
+                        },
+                        { 
+                            joy: "Here's your boarding pass. Have a nice flight!",
+                            hints: ["Thank you!", "Have a good day!"],
+                            feedback: "Excellent! 완료하셨습니다! 🎉"
+                        }
+                    ]
+                },
+                { 
+                    id: 2, 
+                    title: '카페', 
+                    icon: '☕', 
+                    dialogues: [
+                        { 
+                            joy: "Hi! What can I get for you today?",
+                            hints: ["Can I get a latte, please?", "I'd like an Americano."],
+                            feedback: "Good! 주문 표현을 잘 사용했어요."
+                        },
+                        { 
+                            joy: "Sure! What size?",
+                            hints: ["Medium, please.", "Large size."],
+                            feedback: "Perfect! 사이즈를 명확하게 말했어요."
+                        },
+                        { 
+                            joy: "For here or to go?",
+                            hints: ["For here, please.", "To go."],
+                            feedback: "Great! 완료했습니다! 🎉"
+                        }
+                    ]
+                },
+                { 
+                    id: 3, 
+                    title: '호텔', 
+                    icon: '🏨', 
+                    dialogues: [
+                        { 
+                            joy: "Welcome! Do you have a reservation?",
+                            hints: ["Yes, under Kim.", "I have a reservation."],
+                            feedback: "Well done! 예약 확인을 잘 했어요."
+                        },
+                        { 
+                            joy: "May I have your ID, please?",
+                            hints: ["Here you go.", "Sure, here it is."],
+                            feedback: "Perfect! 완료했습니다! 🎉"
+                        }
+                    ]
+                },
+                { 
+                    id: 4, 
+                    title: '쇼핑', 
+                    icon: '🛍️', 
+                    dialogues: [
+                        { 
+                            joy: "Hello! Can I help you find anything?",
+                            hints: ["I'm looking for a shirt.", "Just browsing, thanks."],
+                            feedback: "Good! 답변을 잘 했어요."
+                        },
+                        { 
+                            joy: "This one is on sale today. Would you like to try it?",
+                            hints: ["Yes, please.", "Can I try it on?"],
+                            feedback: "Great! 완료했습니다! 🎉"
+                        }
+                    ]
+                }
+            ];
+
+            const startScenario = (scenarioId) => {
+                setSelectedScenario(scenarioId);
+                setConversation([{
+                    speaker: 'joy',
+                    text: scenarios.find(s => s.id === scenarioId).dialogues[0].joy
+                }]);
+                setCurrentStep(0);
+                setUserInput('');
+            };
+
+            const handleUserResponse = () => {
+                if (!userInput.trim()) return;
+
+                const scenario = scenarios.find(s => s.id === selectedScenario);
+                const currentDialogue = scenario.dialogues[currentStep];
+
+                const newConversation = [
+                    ...conversation,
+                    { speaker: 'user', text: userInput },
+                    { speaker: 'feedback', text: currentDialogue.feedback }
+                ];
+
+                if (currentStep < scenario.dialogues.length - 1) {
+                    const nextStep = currentStep + 1;
+                    newConversation.push({
+                        speaker: 'joy',
+                        text: scenario.dialogues[nextStep].joy
+                    });
+                    setCurrentStep(nextStep);
+                } else {
+                    newConversation.push({
+                        speaker: 'complete',
+                        text: '🎉 완료! 다른 상황도 연습해보세요.'
+                    });
+                }
+
+                setConversation(newConversation);
+                setUserInput('');
+            };
+
+            return (
+                <div className="space-y-4">
+                    <h2 className="text-2xl font-bold text-gray-900">💬 Joy와 대화하기</h2>
+                    
+                    {/* 탭 */}
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                        <div className="flex border-b border-gray-200">
+                            <button
+                                onClick={() => setActiveTab('chat')}
+                                className={`flex-1 px-6 py-3 text-sm font-medium transition-colors ${
+                                    activeTab === 'chat'
+                                        ? 'bg-gray-900 text-white'
+                                        : 'text-gray-600 hover:bg-gray-50'
+                                }`}
+                            >
+                                💬 자유 대화
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('roleplay')}
+                                className={`flex-1 px-6 py-3 text-sm font-medium transition-colors ${
+                                    activeTab === 'roleplay'
+                                        ? 'bg-gray-900 text-white'
+                                        : 'text-gray-600 hover:bg-gray-50'
+                                }`}
+                            >
+                                🎭 상황별 연습
+                            </button>
+                        </div>
+
+                        {/* 자유 대화 */}
+                        {activeTab === 'chat' && (
+                            <div className="p-4">
+                                <div className="bg-blue-50 rounded-lg p-3 mb-4 border-l-4 border-blue-500">
+                                    <p className="text-sm text-gray-700">
+                                        <strong>💡 Tip:</strong> "식당에서", "배고파", "과거완료 설명해줘" 등 자유롭게 질문하세요!
+                                    </p>
+                                </div>
+
+                                <div className="bg-gray-50 rounded-lg p-4 h-[400px] overflow-y-auto space-y-3 mb-4">
+                                    {messages.map((msg, idx) => (
+                                        <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                            <div className={`max-w-xl px-4 py-3 rounded-lg whitespace-pre-line ${
+                                                msg.role === 'user' 
+                                                    ? 'bg-gray-900 text-white' 
+                                                    : 'bg-white text-gray-800 border border-gray-200'
+                                            }`}>
+                                                {msg.content}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={inputMessage}
+                                        onChange={(e) => setInputMessage(e.target.value)}
+                                        onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                                        placeholder="예: 식당에서, 배고파, 과거완료 설명해줘"
+                                        className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
+                                    />
+                                    <button
+                                        onClick={handleSendMessage}
+                                        className="px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition font-medium"
+                                    >
+                                        전송
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 상황별 연습 (롤플레잉) */}
+                        {activeTab === 'roleplay' && (
+                            <div className="p-4">
+                                {!selectedScenario ? (
+                                    <>
+                                        <div className="bg-blue-50 rounded-lg p-3 mb-4 border-l-4 border-blue-500">
+                                            <p className="text-sm text-gray-700">
+                                                <strong>💡 Tip:</strong> 상황을 선택하고 실전처럼 대화를 연습하세요!
+                                            </p>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                            {scenarios.map((scenario) => (
+                                                <button
+                                                    key={scenario.id}
+                                                    onClick={() => startScenario(scenario.id)}
+                                                    className="p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-gray-900 hover:shadow-md transition text-center"
+                                                >
+                                                    <div className="text-4xl mb-2">{scenario.icon}</div>
+                                                    <div className="text-sm font-medium text-gray-900">{scenario.title}</div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="text-lg font-bold text-gray-900">
+                                                {scenarios.find(s => s.id === selectedScenario).icon} {scenarios.find(s => s.id === selectedScenario).title}
+                                            </h3>
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedScenario(null);
+                                                    setConversation([]);
+                                                }}
+                                                className="text-sm text-gray-600 hover:text-gray-900"
+                                            >
+                                                ← 다른 상황 선택
+                                            </button>
+                                        </div>
+
+                                        <div className="bg-gray-50 rounded-lg p-4 h-[350px] overflow-y-auto space-y-3 mb-4">
+                                            {conversation.map((msg, idx) => (
+                                                <div key={idx}>
+                                                    {msg.speaker === 'joy' && (
+                                                        <div className="flex justify-start">
+                                                            <div className="bg-white px-4 py-3 rounded-lg border border-gray-200 max-w-xl">
+                                                                <div className="text-xs text-gray-500 mb-1">Joy:</div>
+                                                                <div className="text-gray-800">{msg.text}</div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {msg.speaker === 'user' && (
+                                                        <div className="flex justify-end">
+                                                            <div className="bg-gray-900 px-4 py-3 rounded-lg text-white max-w-xl">
+                                                                {msg.text}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {msg.speaker === 'feedback' && (
+                                                        <div className="flex justify-center">
+                                                            <div className="bg-green-50 px-4 py-2 rounded-lg border border-green-200 text-sm text-green-700">
+                                                                ✓ {msg.text}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {msg.speaker === 'complete' && (
+                                                        <div className="flex justify-center">
+                                                            <div className="bg-blue-50 px-6 py-3 rounded-lg border border-blue-200 text-blue-700 font-medium">
+                                                                {msg.text}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {conversation.length > 0 && !conversation[conversation.length - 1].text.includes('완료') && (
+                                            <>
+                                                <div className="bg-yellow-50 rounded-lg p-3 mb-3 border-l-4 border-yellow-400">
+                                                    <p className="text-xs text-gray-600 mb-1">힌트:</p>
+                                                    <div className="text-sm text-gray-700 space-y-1">
+                                                        {scenarios.find(s => s.id === selectedScenario).dialogues[currentStep].hints.map((hint, idx) => (
+                                                            <div key={idx}>• {hint}</div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={userInput}
+                                                        onChange={(e) => setUserInput(e.target.value)}
+                                                        onKeyPress={(e) => e.key === 'Enter' && handleUserResponse()}
+                                                        placeholder="영어로 답변하세요..."
+                                                        className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
+                                                    />
+                                                    <button
+                                                        onClick={handleUserResponse}
+                                                        className="px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition font-medium"
+                                                    >
+                                                        전송
+                                                    </button>
+                                                </div>
+                                            </>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        function MyPage({ learningLevel, onLevelChange }) {
+            const [showLevelModal, setShowLevelModal] = useState(false);
+
+            const handleLevelChangeClick = (level) => {
+                onLevelChange(level);
+                setShowLevelModal(false);
+            };
+
+            const getLevelIcon = (level) => {
+                if (level === '초급') return '🌱';
+                if (level === '중급') return '🌿';
+                if (level === '고급') return '🌳';
+                return '📚';
+            };
+
+            return (
+                <div className="space-y-6">
+                    <h2 className="text-3xl font-bold text-gray-800 mb-6">👤 마이 페이지</h2>
+                    
+                    {/* Level Change Modal */}
+                    {showLevelModal && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                            <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4">
+                                <h3 className="text-2xl font-bold text-gray-800 mb-4 text-center">
+                                    학습 레벨 변경
+                                </h3>
+                                <div className="space-y-3">
+                                    <button
+                                        onClick={() => handleLevelChangeClick('초급')}
+                                        className="w-full p-4 bg-green-50 border-2 border-green-500 rounded-lg hover:bg-green-100 transition text-left"
+                                    >
+                                        <div className="font-bold text-lg text-green-700">🌱 초급 (Beginner)</div>
+                                        <div className="text-sm text-gray-600 mt-1">영어를 처음 시작하시는 분</div>
+                                    </button>
+                                    <button
+                                        onClick={() => handleLevelChangeClick('중급')}
+                                        className="w-full p-4 bg-blue-50 border-2 border-blue-500 rounded-lg hover:bg-blue-100 transition text-left"
+                                    >
+                                        <div className="font-bold text-lg text-blue-700">🌿 중급 (Intermediate)</div>
+                                        <div className="text-sm text-gray-600 mt-1">기본적인 의사소통이 가능하신 분</div>
+                                    </button>
+                                    <button
+                                        onClick={() => handleLevelChangeClick('고급')}
+                                        className="w-full p-4 bg-purple-50 border-2 border-purple-500 rounded-lg hover:bg-purple-100 transition text-left"
+                                    >
+                                        <div className="font-bold text-lg text-purple-700">🌳 고급 (Advanced)</div>
+                                        <div className="text-sm text-gray-600 mt-1">유창한 대화가 가능하신 분</div>
+                                    </button>
+                                    <button
+                                        onClick={() => setShowLevelModal(false)}
+                                        className="w-full mt-4 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition"
+                                    >
+                                        취소
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-6 text-white">
+                        <div className="flex items-center space-x-4">
+                            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center text-4xl">
+                                👤
+                            </div>
+                            <div>
+                                <h3 className="text-2xl font-bold">게스트 사용자</h3>
+                                <p className="opacity-90">guest@example.com</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-white border border-gray-200 rounded-lg p-6">
+                            <h4 className="text-xl font-semibold text-gray-800 mb-4">📈 현재 학습 레벨</h4>
+                            <div className="text-4xl font-bold text-blue-600 mb-2">
+                                {getLevelIcon(learningLevel)} {learningLevel || '미설정'}
+                            </div>
+                            {learningLevel && (
+                                <>
+                                    <div className="mt-4 bg-gray-200 rounded-full h-3">
+                                        <div className="bg-blue-600 h-3 rounded-full" style={{width: '65%'}}></div>
+                                    </div>
+                                    <p className="text-sm text-gray-600 mt-2">다음 레벨까지 35%</p>
+                                </>
+                            )}
+                        </div>
+
+                        <div className="bg-white border border-gray-200 rounded-lg p-6">
+                            <h4 className="text-xl font-semibold text-gray-800 mb-4">🏆 획득한 배지</h4>
+                            <div className="flex gap-3 flex-wrap">
+                                <div className="text-4xl" title="첫 학습 완료">🎯</div>
+                                <div className="text-4xl" title="단어 마스터">📚</div>
+                                <div className="text-4xl" title="연속 학습">🔥</div>
+                                <div className="text-4xl" title="우수 학습자">⭐</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white border border-gray-200 rounded-lg p-6">
+                        <h4 className="text-xl font-semibold text-gray-800 mb-4">⚙️ 설정</h4>
+                        <div className="space-y-3">
+                            <button 
+                                onClick={() => setShowLevelModal(true)}
+                                className="w-full text-left px-4 py-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition border-2 border-blue-200 font-medium text-blue-700"
+                            >
+                                🎯 학습 단계 설정
+                            </button>
+                            <button className="w-full text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition">
+                                🔔 알림 설정
+                            </button>
+                            <button className="w-full text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition">
+                                📝 학습 목표 변경
+                            </button>
+                            <button className="w-full text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition">
+                                👤 계정 설정
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // 새로운 컴포넌트들
+        function GrowthReport() {
+            const [weeklyData, setWeeklyData] = useState([10, 25, 35, 45, 60, 75, 90]);
+            
+            return (
+                <div className="space-y-6">
+                    <h2 className="text-3xl font-bold text-gray-800 mb-6">📈 성장 리포트</h2>
+                    
+                    <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 border-l-4 border-l-pink-500">
+                        <h3 className="text-xl font-bold mb-2 text-gray-900">🎉 Joy가 말해요!</h3>
+                        <p className="text-base text-gray-700">"이번 주 정말 열심히 하셨어요! 지난 주보다 20% 더 성장했답니다!"</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-white rounded-xl p-6 shadow-lg joy-card">
+                            <div className="text-pink-500 text-4xl mb-2">📚</div>
+                            <div className="text-2xl font-bold text-gray-800">45개</div>
+                            <div className="text-gray-600">이번 주 학습한 단어</div>
+                        </div>
+                        <div className="bg-white rounded-xl p-6 shadow-lg joy-card">
+                            <div className="text-orange-500 text-4xl mb-2">⏱️</div>
+                            <div className="text-2xl font-bold text-gray-800">3시간 20분</div>
+                            <div className="text-gray-600">이번 주 학습 시간</div>
+                        </div>
+                        <div className="bg-white rounded-xl p-6 shadow-lg joy-card">
+                            <div className="text-yellow-500 text-4xl mb-2">🎯</div>
+                            <div className="text-2xl font-bold text-gray-800">12개</div>
+                            <div className="text-gray-600">완료한 목표</div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl p-6 shadow-lg">
+                        <h3 className="text-xl font-bold text-gray-800 mb-4">주간 학습 진도</h3>
+                        <div className="space-y-3">
+                            {['월', '화', '수', '목', '금', '토', '일'].map((day, idx) => (
+                                <div key={day} className="flex items-center gap-3">
+                                    <div className="w-12 text-gray-600 font-medium">{day}</div>
+                                    <div className="flex-1 bg-gray-200 rounded-full h-4">
+                                        <div 
+                                            className="bg-pink-500 h-4 rounded-full transition-all"
+                                            style={{width: `${weeklyData[idx]}%`}}
+                                        />
+                                    </div>
+                                    <div className="w-12 text-right font-bold text-gray-700">{weeklyData[idx]}%</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl p-6 shadow-lg">
+                        <h3 className="text-xl font-bold text-gray-800 mb-4">🏆 획득한 배지</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {[
+                                { emoji: '🌱', name: '첫 걸음', desc: '첫 학습 완료' },
+                                { emoji: '🔥', name: '연속 학습', desc: '7일 연속' },
+                                { emoji: '⭐', name: '단어 마스터', desc: '100단어 학습' },
+                                { emoji: '💬', name: '대화왕', desc: 'AI 튜터 10회' }
+                            ].map((badge, idx) => (
+                                <div key={idx} className="text-center p-4 bg-gradient-to-br from-pink-50 to-orange-50 rounded-xl joy-card">
+                                    <div className="text-5xl mb-2">{badge.emoji}</div>
+                                    <div className="font-bold text-gray-800">{badge.name}</div>
+                                    <div className="text-xs text-gray-600 mt-1">{badge.desc}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+
+        function Community() {
+            return (
+                <div className="space-y-6">
+                    <h2 className="text-3xl font-bold text-gray-800 mb-6">🌍 커뮤니티</h2>
+                    
+                    <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-200 border-l-4 border-l-pink-500">
+                        <h3 className="text-xl font-bold mb-2 text-gray-900">함께 성장해요! 🌟</h3>
+                        <p className="text-sm text-gray-700">다른 학습자들과 경험을 공유하고 함께 영어 실력을 키워가요!</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-white rounded-xl p-6 shadow-lg joy-card text-center">
+                            <div className="text-5xl mb-3">📝</div>
+                            <h3 className="text-xl font-bold text-gray-800 mb-2">학습 후기</h3>
+                            <p className="text-gray-600 mb-4">나의 학습 경험을 공유해보세요</p>
+                            <button className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition">
+                                후기 쓰기
+                            </button>
+                        </div>
+                        <div className="bg-white rounded-xl p-6 shadow-lg joy-card text-center">
+                            <div className="text-5xl mb-3">🏆</div>
+                            <h3 className="text-xl font-bold text-gray-800 mb-2">챌린지</h3>
+                            <p className="text-gray-600 mb-4">다른 학습자들과 함께 도전!</p>
+                            <button className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition">
+                                참여하기
+                            </button>
+                        </div>
+                        <div className="bg-white rounded-xl p-6 shadow-lg joy-card text-center">
+                            <div className="text-5xl mb-3">💭</div>
+                            <h3 className="text-xl font-bold text-gray-800 mb-2">Q&A</h3>
+                            <p className="text-gray-600 mb-4">궁금한 점을 질문하세요</p>
+                            <button className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition">
+                                질문하기
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl p-6 shadow-lg">
+                        <h3 className="text-xl font-bold text-gray-800 mb-4">최근 게시글</h3>
+                        <div className="space-y-4">
+                            {[
+                                { title: '3개월 만에 토익 200점 올렸어요!', author: '영어조아', likes: 24, comments: 8 },
+                                { title: 'Joy와 함께한 30일 후기', author: '꾸준이', likes: 18, comments: 5 },
+                                { title: '발음 교정 팁 공유합니다', author: '발음왕', likes: 15, comments: 12 }
+                            ].map((post, idx) => (
+                                <div key={idx} className="p-4 border border-gray-200 rounded-lg hover:border-pink-300 transition cursor-pointer">
+                                    <h4 className="font-bold text-gray-800 mb-2">{post.title}</h4>
+                                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                                        <span>{post.author}</span>
+                                        <span>❤️ {post.likes}</span>
+                                        <span>💬 {post.comments}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Main App Component
+        function App() {
+            const [currentView, setCurrentView] = useState('dashboard');
+            const [learningLevel, setLearningLevel] = useState(localStorage.getItem('learningLevel') || '');
+            const [showLevelSelector, setShowLevelSelector] = useState(!localStorage.getItem('learningLevel'));
+
+            const handleLevelSelect = (level) => {
+                setLearningLevel(level);
+                localStorage.setItem('learningLevel', level);
+                setShowLevelSelector(false);
+                
+                // 포인트 초기화
+                if (!localStorage.getItem('joyPoints')) {
+                    localStorage.setItem('joyPoints', '0');
+                }
+            };
+
+            return (
+                <main className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-50">
+                    {/* Level Selection Modal */}
+                    {showLevelSelector && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                            <div className="bg-white rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl">
+                                <div className="text-center mb-6">
+                                    <div className="text-7xl mb-4 joy-float">😊</div>
+                                    <h2 className="text-4xl font-bold joy-text-gradient mb-3">
+                                        JoyTalk에 오신 것을 환영해요!
+                                    </h2>
+                                    <p className="text-gray-600">
+                                        학습 레벨을 선택해주세요<br/>
+                                        <span className="text-sm">(나중에 설정에서 변경할 수 있어요)</span>
+                                    </p>
+                                </div>
+                                <div className="space-y-3">
+                                    <button
+                                        onClick={() => handleLevelSelect('초급')}
+                                        className="w-full p-4 bg-green-50 border-2 border-green-500 rounded-lg hover:bg-green-100 transition text-left"
+                                    >
+                                        <div className="font-bold text-lg text-green-700">🌱 초급 (Beginner)</div>
+                                        <div className="text-sm text-gray-600 mt-1">영어를 처음 시작하시는 분</div>
+                                    </button>
+                                    <button
+                                        onClick={() => handleLevelSelect('중급')}
+                                        className="w-full p-4 bg-blue-50 border-2 border-blue-500 rounded-lg hover:bg-blue-100 transition text-left"
+                                    >
+                                        <div className="font-bold text-lg text-blue-700">🌿 중급 (Intermediate)</div>
+                                        <div className="text-sm text-gray-600 mt-1">기본적인 의사소통이 가능하신 분</div>
+                                    </button>
+                                    <button
+                                        onClick={() => handleLevelSelect('고급')}
+                                        className="w-full p-4 bg-purple-50 border-2 border-purple-500 rounded-lg hover:bg-purple-100 transition text-left"
+                                    >
+                                        <div className="font-bold text-lg text-purple-700">🌳 고급 (Advanced)</div>
+                                        <div className="text-sm text-gray-600 mt-1">유창한 대화가 가능하신 분</div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* JoyTalk Header */}
+                    <header className="bg-white shadow-sm border-b border-gray-200">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div className="flex justify-between items-center h-16">
+                                <div className="flex items-center gap-3">
+                                    <div>
+                                        <h1 className="text-2xl font-bold text-gray-900">
+                                            JoyTalk
+                                        </h1>
+                                        <p className="text-xs text-gray-500">즐거운 영어 학습</p>
+                                    </div>
+                                    {learningLevel && (
+                                        <span className="ml-3 px-3 py-1 bg-pink-50 text-pink-600 rounded-full text-xs font-medium border border-pink-200">
+                                            {learningLevel}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex items-center space-x-1">
+                                    <nav className="flex space-x-1">
+                                        <button
+                                            onClick={() => setCurrentView('dashboard')}
+                                            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                                                currentView === 'dashboard'
+                                                    ? 'bg-gray-900 text-white'
+                                                    : 'text-gray-600 hover:bg-gray-100'
+                                            }`}
+                                        >
+                                            🏠 홈
+                                        </button>
+                                        <button
+                                            onClick={() => setCurrentView('vocabulary')}
+                                            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                                                currentView === 'vocabulary'
+                                                    ? 'bg-gray-900 text-white'
+                                                    : 'text-gray-600 hover:bg-gray-100'
+                                            }`}
+                                        >
+                                            📖 단어
+                                        </button>
+                                        <button
+                                            onClick={() => setCurrentView('ai-tutor')}
+                                            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                                                currentView === 'ai-tutor'
+                                                    ? 'bg-gray-900 text-white'
+                                                    : 'text-gray-600 hover:bg-gray-100'
+                                            }`}
+                                        >
+                                            💬 대화
+                                        </button>
+                                        <button
+                                            onClick={() => setCurrentView('growth')}
+                                            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                                                currentView === 'growth'
+                                                    ? 'bg-gray-900 text-white'
+                                                    : 'text-gray-600 hover:bg-gray-100'
+                                            }`}
+                                        >
+                                            📈 성장
+                                        </button>
+                                        <button
+                                            onClick={() => setCurrentView('community')}
+                                            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                                                currentView === 'community'
+                                                    ? 'bg-gray-900 text-white'
+                                                    : 'text-gray-600 hover:bg-gray-100'
+                                            }`}
+                                        >
+                                            🌍 커뮤니티
+                                        </button>
+                                        <button
+                                            onClick={() => setCurrentView('mypage')}
+                                            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                                                currentView === 'mypage'
+                                                    ? 'bg-gray-900 text-white'
+                                                    : 'text-gray-600 hover:bg-gray-100'
+                                            }`}
+                                        >
+                                            👤 MY
+                                        </button>
+                                    </nav>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Main Content */}
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                        {currentView === 'dashboard' && <StudyDashboard />}
+                        {currentView === 'vocabulary' && <VocabularyLearning />}
+                        {currentView === 'ai-tutor' && <AITutorChat />}
+                        {currentView === 'growth' && <GrowthReport />}
+                        {currentView === 'community' && <Community />}
+                        {currentView === 'mypage' && <MyPage learningLevel={learningLevel} onLevelChange={handleLevelSelect} />}
+                    </div>
+
+                    {/* Footer */}
+                    <footer className="bg-white border-t border-gray-200 mt-12 py-8">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">JoyTalk</h3>
+                            <p className="text-sm text-gray-600 mb-1">즐거운 영어 학습, Joy와 함께하세요!</p>
+                            <p className="text-xs text-gray-500 mb-4">Joyful, Consistent Learning</p>
+                            <div className="text-xs text-gray-400">
+                                © 2024 JoyTalk. Learn with Joy, Speak with Confidence.
+                            </div>
+                        </div>
+                    </footer>
+                </main>
+            );
+        }
+
+        // Render the app
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
