@@ -1345,8 +1345,11 @@
 
         function PronunciationPractice() {
             const [selectedWord, setSelectedWord] = useState(null);
+            const [selectedSentence, setSelectedSentence] = useState(null);
             const [isRecording, setIsRecording] = useState(false);
             const [feedback, setFeedback] = useState(null);
+            const [activeTab, setActiveTab] = useState('word'); // 'word' or 'sentence'
+            const [recognizedText, setRecognizedText] = useState('');
             
             const practiceWords = [
                 { id: 1, word: 'pronunciation', phonetic: '/prəˌnʌnsiˈeɪʃn/', meaning: '발음', difficulty: '초급' },
@@ -1364,17 +1367,142 @@
                 { id: 4, text: "I'm particularly interested in learning English.", meaning: "저는 특히 영어 배우기에 관심이 있어요.", difficulty: '고급' }
             ];
             
+            // 문자열 유사도 계산 (Levenshtein Distance 기반)
+            const calculateSimilarity = (str1, str2) => {
+                const s1 = str1.toLowerCase().trim();
+                const s2 = str2.toLowerCase().trim();
+                
+                if (s1 === s2) return 100;
+                
+                const len1 = s1.length;
+                const len2 = s2.length;
+                const matrix = [];
+                
+                for (let i = 0; i <= len2; i++) {
+                    matrix[i] = [i];
+                }
+                for (let j = 0; j <= len1; j++) {
+                    matrix[0][j] = j;
+                }
+                for (let i = 1; i <= len2; i++) {
+                    for (let j = 1; j <= len1; j++) {
+                        if (s2.charAt(i - 1) === s1.charAt(j - 1)) {
+                            matrix[i][j] = matrix[i - 1][j - 1];
+                        } else {
+                            matrix[i][j] = Math.min(
+                                matrix[i - 1][j - 1] + 1,
+                                matrix[i][j - 1] + 1,
+                                matrix[i - 1][j] + 1
+                            );
+                        }
+                    }
+                }
+                
+                const distance = matrix[len2][len1];
+                const maxLen = Math.max(len1, len2);
+                const similarity = ((maxLen - distance) / maxLen) * 100;
+                
+                return Math.round(similarity);
+            };
+            
+            // 발음 피드백 생성
+            const generateFeedback = (score, targetText, recognizedText) => {
+                let message = '';
+                let suggestions = [];
+                
+                if (score >= 90) {
+                    message = '완벽해요! 🎉 발음이 매우 정확합니다!';
+                    suggestions = ['계속 이렇게 연습하면 원어민처럼 말할 수 있어요!', '다른 어려운 단어에도 도전해보세요!'];
+                } else if (score >= 80) {
+                    message = '훌륭해요! 👍 발음이 좋습니다!';
+                    suggestions = ['조금만 더 또박또박 발음해보세요.', '억양에 신경쓰면 더 좋아질 거예요!'];
+                } else if (score >= 70) {
+                    message = '잘하고 있어요! 💪 조금만 더 연습하면 완벽해요!';
+                    suggestions = ['천천히 정확하게 발음해보세요.', '원어민 발음을 듣고 따라해보세요.'];
+                } else if (score >= 50) {
+                    message = '계속 연습해보세요! 📚 발전하고 있어요!';
+                    suggestions = ['한 음절씩 나눠서 연습해보세요.', '거울을 보며 입 모양을 확인해보세요.'];
+                } else {
+                    message = '괜찮아요! 🌱 처음엔 다 어려워요. 천천히 연습해봐요!';
+                    suggestions = ['발음 기호를 참고해서 천천히 따라해보세요.', '듣기 연습부터 시작해보는 것도 좋아요.'];
+                }
+                
+                // 구체적인 차이점 분석
+                const target = targetText.toLowerCase().replace(/[^a-z0-9\s]/g, '');
+                const recognized = recognizedText.toLowerCase().replace(/[^a-z0-9\s]/g, '');
+                
+                if (target !== recognized) {
+                    suggestions.push(`인식된 단어: "${recognizedText}" → 목표: "${targetText}"`);
+                }
+                
+                return { score, message, suggestions };
+            };
+            
             const handleRecord = () => {
-                setIsRecording(true);
-                // 실제로는 음성 인식 API 사용
-                setTimeout(() => {
+                const targetText = activeTab === 'word' ? selectedWord?.word : selectedSentence?.text;
+                
+                if (!targetText) {
+                    alert('먼저 연습할 단어나 문장을 선택해주세요!');
+                    return;
+                }
+                
+                // Web Speech API 지원 확인
+                if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                    alert('죄송합니다. 이 브라우저는 음성 인식을 지원하지 않습니다. Chrome 브라우저를 사용해주세요.');
+                    return;
+                }
+                
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                const recognition = new SpeechRecognition();
+                
+                recognition.lang = 'en-US';
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.maxAlternatives = 1;
+                
+                recognition.onstart = () => {
+                    setIsRecording(true);
+                    setFeedback(null);
+                    setRecognizedText('');
+                };
+                
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    setRecognizedText(transcript);
+                    
+                    // 유사도 계산
+                    const score = calculateSimilarity(targetText, transcript);
+                    const feedbackData = generateFeedback(score, targetText, transcript);
+                    
+                    setFeedback(feedbackData);
                     setIsRecording(false);
-                    setFeedback({
-                        score: 85,
-                        message: '훌륭해요! 발음이 정확합니다.',
-                        suggestions: ['th 발음을 조금 더 강조해보세요.', '억양이 자연스러워요!']
-                    });
-                }, 2000);
+                };
+                
+                recognition.onerror = (event) => {
+                    console.error('Speech recognition error', event.error);
+                    setIsRecording(false);
+                    
+                    let errorMessage = '음성 인식 중 오류가 발생했습니다.';
+                    if (event.error === 'no-speech') {
+                        errorMessage = '음성이 감지되지 않았습니다. 다시 시도해주세요.';
+                    } else if (event.error === 'not-allowed') {
+                        errorMessage = '마이크 권한을 허용해주세요.';
+                    }
+                    
+                    alert(errorMessage);
+                };
+                
+                recognition.onend = () => {
+                    setIsRecording(false);
+                };
+                
+                try {
+                    recognition.start();
+                } catch (error) {
+                    console.error('Error starting recognition:', error);
+                    setIsRecording(false);
+                    alert('음성 인식을 시작할 수 없습니다. 다시 시도해주세요.');
+                }
             };
             
             return (
@@ -1404,86 +1532,207 @@
                     {/* 탭 선택 */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                         <div className="flex border-b border-gray-200">
-                            <button className="flex-1 px-6 py-3 text-sm font-medium bg-gray-900 text-white">
+                            <button 
+                                onClick={() => {
+                                    setActiveTab('word');
+                                    setSelectedSentence(null);
+                                    setFeedback(null);
+                                }}
+                                className={`flex-1 px-6 py-3 text-sm font-medium transition ${
+                                    activeTab === 'word' 
+                                        ? 'bg-gray-900 text-white' 
+                                        : 'text-gray-600 hover:bg-gray-50'
+                                }`}
+                            >
                                 📝 단어 연습
                             </button>
-                            <button className="flex-1 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50">
+                            <button 
+                                onClick={() => {
+                                    setActiveTab('sentence');
+                                    setSelectedWord(null);
+                                    setFeedback(null);
+                                }}
+                                className={`flex-1 px-6 py-3 text-sm font-medium transition ${
+                                    activeTab === 'sentence' 
+                                        ? 'bg-gray-900 text-white' 
+                                        : 'text-gray-600 hover:bg-gray-50'
+                                }`}
+                            >
                                 💬 문장 연습
                             </button>
                         </div>
                         
                         <div className="p-4">
-                            {/* 단어 목록 */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
-                                {practiceWords.map((item) => (
-                                    <div 
-                                        key={item.id}
-                                        onClick={() => setSelectedWord(item)}
-                                        className={`p-4 rounded-lg border-2 cursor-pointer transition ${
-                                            selectedWord?.id === item.id 
-                                                ? 'border-pink-500 bg-pink-50' 
-                                                : 'border-gray-200 hover:border-gray-300 bg-white'
-                                        }`}
-                                    >
-                                        <div className="flex items-center justify-between mb-2">
-                                            <div className="text-xl font-bold text-gray-900">{item.word}</div>
-                                            <span className={`text-xs px-2 py-1 rounded-full ${
-                                                item.difficulty === '초급' ? 'bg-green-100 text-green-700' :
-                                                item.difficulty === '중급' ? 'bg-blue-100 text-blue-700' :
-                                                'bg-purple-100 text-purple-700'
-                                            }`}>{item.difficulty}</span>
-                                        </div>
-                                        <div className="text-sm text-gray-500">{item.phonetic}</div>
-                                        <div className="text-sm text-gray-600 mt-1">{item.meaning}</div>
-                                    </div>
-                                ))}
-                            </div>
-                            
-                            {/* 발음 연습 영역 */}
-                            {selectedWord && (
-                                <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
-                                    <div className="text-center mb-6">
-                                        <div className="text-3xl font-bold text-gray-900 mb-2">{selectedWord.word}</div>
-                                        <div className="text-lg text-gray-600 mb-1">{selectedWord.phonetic}</div>
-                                        <div className="text-sm text-gray-500">{selectedWord.meaning}</div>
-                                    </div>
-                                    
-                                    <div className="flex flex-col items-center gap-4">
-                                        <button
-                                            onClick={handleRecord}
-                                            disabled={isRecording}
-                                            className={`w-24 h-24 rounded-full flex items-center justify-center text-4xl transition ${
-                                                isRecording 
-                                                    ? 'bg-red-500 animate-pulse' 
-                                                    : 'bg-pink-500 hover:bg-pink-600'
-                                            }`}
-                                        >
-                                            {isRecording ? '🔴' : '🎤'}
-                                        </button>
-                                        <div className="text-sm font-medium text-gray-700">
-                                            {isRecording ? '듣고 있어요...' : '마이크를 클릭하고 발음해보세요'}
-                                        </div>
-                                    </div>
-                                    
-                                    {/* 피드백 */}
-                                    {feedback && (
-                                        <div className="mt-6 space-y-3">
-                                            <div className="bg-white rounded-lg p-4 border-l-4 border-green-500">
+                            {/* 단어 연습 탭 */}
+                            {activeTab === 'word' && (
+                                <>
+                                    {/* 단어 목록 */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+                                        {practiceWords.map((item) => (
+                                            <div 
+                                                key={item.id}
+                                                onClick={() => {
+                                                    setSelectedWord(item);
+                                                    setFeedback(null);
+                                                }}
+                                                className={`p-4 rounded-lg border-2 cursor-pointer transition ${
+                                                    selectedWord?.id === item.id 
+                                                        ? 'border-pink-500 bg-pink-50' 
+                                                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                                                }`}
+                                            >
                                                 <div className="flex items-center justify-between mb-2">
-                                                    <div className="font-bold text-gray-900">발음 점수</div>
-                                                    <div className="text-2xl font-bold text-green-500">{feedback.score}점</div>
+                                                    <div className="text-xl font-bold text-gray-900">{item.word}</div>
+                                                    <span className={`text-xs px-2 py-1 rounded-full ${
+                                                        item.difficulty === '초급' ? 'bg-green-100 text-green-700' :
+                                                        item.difficulty === '중급' ? 'bg-blue-100 text-blue-700' :
+                                                        'bg-purple-100 text-purple-700'
+                                                    }`}>{item.difficulty}</span>
                                                 </div>
-                                                <div className="text-sm text-gray-700">{feedback.message}</div>
+                                                <div className="text-sm text-gray-500">{item.phonetic}</div>
+                                                <div className="text-sm text-gray-600 mt-1">{item.meaning}</div>
                                             </div>
-                                            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                                                <div className="font-medium text-gray-900 mb-2">💡 개선 팁</div>
-                                                {feedback.suggestions.map((tip, idx) => (
-                                                    <div key={idx} className="text-sm text-gray-700 mb-1">• {tip}</div>
-                                                ))}
+                                        ))}
+                                    </div>
+                                    
+                                    {/* 발음 연습 영역 */}
+                                    {selectedWord && (
+                                        <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                                            <div className="text-center mb-6">
+                                                <div className="text-3xl font-bold text-gray-900 mb-2">{selectedWord.word}</div>
+                                                <div className="text-lg text-gray-600 mb-1">{selectedWord.phonetic}</div>
+                                                <div className="text-sm text-gray-500">{selectedWord.meaning}</div>
                                             </div>
+                                            
+                                            <div className="flex flex-col items-center gap-4">
+                                                <button
+                                                    onClick={handleRecord}
+                                                    disabled={isRecording}
+                                                    className={`w-24 h-24 rounded-full flex items-center justify-center text-4xl transition ${
+                                                        isRecording 
+                                                            ? 'bg-red-500 animate-pulse' 
+                                                            : 'bg-pink-500 hover:bg-pink-600'
+                                                    }`}
+                                                >
+                                                    {isRecording ? '🔴' : '🎤'}
+                                                </button>
+                                                <div className="text-sm font-medium text-gray-700">
+                                                    {isRecording ? '듣고 있어요...' : '마이크를 클릭하고 발음해보세요'}
+                                                </div>
+                                            </div>
+                                            
+                                            {/* 피드백 */}
+                                            {feedback && (
+                                                <div className="mt-6 space-y-3">
+                                                    <div className={`bg-white rounded-lg p-4 border-l-4 ${
+                                                        feedback.score >= 80 ? 'border-green-500' : 
+                                                        feedback.score >= 60 ? 'border-yellow-500' : 'border-orange-500'
+                                                    }`}>
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <div className="font-bold text-gray-900">발음 점수</div>
+                                                            <div className={`text-2xl font-bold ${
+                                                                feedback.score >= 80 ? 'text-green-500' : 
+                                                                feedback.score >= 60 ? 'text-yellow-500' : 'text-orange-500'
+                                                            }`}>{feedback.score}점</div>
+                                                        </div>
+                                                        <div className="text-sm text-gray-700">{feedback.message}</div>
+                                                    </div>
+                                                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                                                        <div className="font-medium text-gray-900 mb-2">💡 개선 팁</div>
+                                                        {feedback.suggestions.map((tip, idx) => (
+                                                            <div key={idx} className="text-sm text-gray-700 mb-1">• {tip}</div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
-                                </div>
+                                </>
+                            )}
+                            
+                            {/* 문장 연습 탭 */}
+                            {activeTab === 'sentence' && (
+                                <>
+                                    {/* 문장 목록 */}
+                                    <div className="space-y-3 mb-6">
+                                        {sentences.map((item) => (
+                                            <div 
+                                                key={item.id}
+                                                onClick={() => {
+                                                    setSelectedSentence(item);
+                                                    setFeedback(null);
+                                                }}
+                                                className={`p-4 rounded-lg border-2 cursor-pointer transition ${
+                                                    selectedSentence?.id === item.id 
+                                                        ? 'border-pink-500 bg-pink-50' 
+                                                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                                                }`}
+                                            >
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div className="text-lg font-bold text-gray-900">{item.text}</div>
+                                                    <span className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ml-2 ${
+                                                        item.difficulty === '초급' ? 'bg-green-100 text-green-700' :
+                                                        item.difficulty === '중급' ? 'bg-blue-100 text-blue-700' :
+                                                        'bg-purple-100 text-purple-700'
+                                                    }`}>{item.difficulty}</span>
+                                                </div>
+                                                <div className="text-sm text-gray-600">{item.meaning}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    
+                                    {/* 문장 발음 연습 영역 */}
+                                    {selectedSentence && (
+                                        <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                                            <div className="text-center mb-6">
+                                                <div className="text-2xl font-bold text-gray-900 mb-2">{selectedSentence.text}</div>
+                                                <div className="text-base text-gray-500">{selectedSentence.meaning}</div>
+                                            </div>
+                                            
+                                            <div className="flex flex-col items-center gap-4">
+                                                <button
+                                                    onClick={handleRecord}
+                                                    disabled={isRecording}
+                                                    className={`w-24 h-24 rounded-full flex items-center justify-center text-4xl transition ${
+                                                        isRecording 
+                                                            ? 'bg-red-500 animate-pulse' 
+                                                            : 'bg-pink-500 hover:bg-pink-600'
+                                                    }`}
+                                                >
+                                                    {isRecording ? '🔴' : '🎤'}
+                                                </button>
+                                                <div className="text-sm font-medium text-gray-700">
+                                                    {isRecording ? '듣고 있어요...' : '마이크를 클릭하고 문장을 말해보세요'}
+                                                </div>
+                                            </div>
+                                            
+                                            {/* 피드백 */}
+                                            {feedback && (
+                                                <div className="mt-6 space-y-3">
+                                                    <div className={`bg-white rounded-lg p-4 border-l-4 ${
+                                                        feedback.score >= 80 ? 'border-green-500' : 
+                                                        feedback.score >= 60 ? 'border-yellow-500' : 'border-orange-500'
+                                                    }`}>
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <div className="font-bold text-gray-900">발음 점수</div>
+                                                            <div className={`text-2xl font-bold ${
+                                                                feedback.score >= 80 ? 'text-green-500' : 
+                                                                feedback.score >= 60 ? 'text-yellow-500' : 'text-orange-500'
+                                                            }`}>{feedback.score}점</div>
+                                                        </div>
+                                                        <div className="text-sm text-gray-700">{feedback.message}</div>
+                                                    </div>
+                                                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                                                        <div className="font-medium text-gray-900 mb-2">💡 개선 팁</div>
+                                                        {feedback.suggestions.map((tip, idx) => (
+                                                            <div key={idx} className="text-sm text-gray-700 mb-1">• {tip}</div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
                     </div>
