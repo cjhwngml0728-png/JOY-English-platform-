@@ -63,8 +63,28 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
+        // User Data Helper Functions
+        const UserStorage = {
+            get: (userId, key, defaultValue = null) => {
+                const value = localStorage.getItem(`user_${userId}_${key}`);
+                if (value === null) return defaultValue;
+                try {
+                    return JSON.parse(value);
+                } catch {
+                    return value;
+                }
+            },
+            set: (userId, key, value) => {
+                const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+                localStorage.setItem(`user_${userId}_${key}`, stringValue);
+            },
+            remove: (userId, key) => {
+                localStorage.removeItem(`user_${userId}_${key}`);
+            }
+        };
+
         // Components
-        function StudyDashboard() {
+        function StudyDashboard({ userId }) {
             const [studyStats] = useState({
                 totalStudyTime: 0,
                 wordsLearned: 0,
@@ -72,7 +92,7 @@
                 completedLessons: 0
             });
 
-            const learningLevel = localStorage.getItem('learningLevel') || '미설정';
+            const learningLevel = UserStorage.get(userId, 'learningLevel', '미설정');
             
             // 학습 목표 관리
             const defaultGoals = [
@@ -82,8 +102,7 @@
             ];
             
             const [goals, setGoals] = useState(() => {
-                const saved = localStorage.getItem('studyGoals');
-                return saved ? JSON.parse(saved) : defaultGoals;
+                return UserStorage.get(userId, 'studyGoals', defaultGoals);
             });
             
             const [showAddGoal, setShowAddGoal] = useState(false);
@@ -94,7 +113,7 @@
                     goal.id === id ? { ...goal, completed: !goal.completed } : goal
                 );
                 setGoals(updatedGoals);
-                localStorage.setItem('studyGoals', JSON.stringify(updatedGoals));
+                UserStorage.set(userId, 'studyGoals', updatedGoals);
             };
 
             const addGoal = () => {
@@ -108,7 +127,7 @@
                     };
                     const updatedGoals = [...goals, newGoal];
                     setGoals(updatedGoals);
-                    localStorage.setItem('studyGoals', JSON.stringify(updatedGoals));
+                    UserStorage.set(userId, 'studyGoals', updatedGoals);
                     setNewGoalText('');
                     setShowAddGoal(false);
                 }
@@ -117,12 +136,12 @@
             const deleteGoal = (id) => {
                 const updatedGoals = goals.filter(goal => goal.id !== id);
                 setGoals(updatedGoals);
-                localStorage.setItem('studyGoals', JSON.stringify(updatedGoals));
+                UserStorage.set(userId, 'studyGoals', updatedGoals);
             };
 
             const resetGoals = () => {
                 setGoals(defaultGoals);
-                localStorage.setItem('studyGoals', JSON.stringify(defaultGoals));
+                UserStorage.set(userId, 'studyGoals', defaultGoals);
             };
 
             return (
@@ -1837,22 +1856,175 @@
             );
         }
 
+        // User Authentication Component
+        function LoginScreen({ onLogin }) {
+            const [isLogin, setIsLogin] = useState(true);
+            const [username, setUsername] = useState('');
+            const [error, setError] = useState('');
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                
+                if (!username.trim()) {
+                    setError('이름을 입력해주세요!');
+                    return;
+                }
+
+                const users = JSON.parse(localStorage.getItem('joyTalkUsers') || '[]');
+                
+                if (isLogin) {
+                    // 로그인
+                    const user = users.find(u => u.username.toLowerCase() === username.toLowerCase());
+                    if (user) {
+                        onLogin(user);
+                    } else {
+                        setError('등록되지 않은 사용자입니다. 회원가입을 해주세요!');
+                    }
+                } else {
+                    // 회원가입
+                    const existingUser = users.find(u => u.username.toLowerCase() === username.toLowerCase());
+                    if (existingUser) {
+                        setError('이미 존재하는 이름입니다. 다른 이름을 사용해주세요!');
+                    } else {
+                        const newUser = {
+                            id: Date.now().toString(),
+                            username: username.trim(),
+                            createdAt: new Date().toISOString()
+                        };
+                        users.push(newUser);
+                        localStorage.setItem('joyTalkUsers', JSON.stringify(users));
+                        onLogin(newUser);
+                    }
+                }
+            };
+
+            return (
+                <div className="min-h-screen joy-gradient flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
+                        <div className="text-center mb-8">
+                            <div className="text-7xl mb-4 joy-float">😊</div>
+                            <h1 className="text-4xl font-bold joy-text-gradient mb-2">JoyTalk</h1>
+                            <p className="text-gray-600">즐거운 영어 학습</p>
+                        </div>
+
+                        <div className="flex gap-2 mb-6">
+                            <button
+                                onClick={() => {
+                                    setIsLogin(true);
+                                    setError('');
+                                }}
+                                className={`flex-1 py-2 rounded-lg font-medium transition ${
+                                    isLogin
+                                        ? 'bg-gray-900 text-white'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                            >
+                                로그인
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setIsLogin(false);
+                                    setError('');
+                                }}
+                                className={`flex-1 py-2 rounded-lg font-medium transition ${
+                                    !isLogin
+                                        ? 'bg-gray-900 text-white'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                            >
+                                회원가입
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    이름 또는 닉네임
+                                </label>
+                                <input
+                                    type="text"
+                                    value={username}
+                                    onChange={(e) => {
+                                        setUsername(e.target.value);
+                                        setError('');
+                                    }}
+                                    placeholder="예: 영어킹, Joy, 홍길동"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                                    autoFocus
+                                />
+                            </div>
+
+                            {error && (
+                                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                                    {error}
+                                </div>
+                            )}
+
+                            <button
+                                type="submit"
+                                className="w-full bg-gray-900 text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition"
+                            >
+                                {isLogin ? '로그인' : '회원가입'}
+                            </button>
+                        </form>
+
+                        <div className="mt-6 text-center text-sm text-gray-500">
+                            <p>💡 간편하게 이름만 입력하면 시작할 수 있어요!</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
         // Main App Component
         function App() {
+            const [currentUser, setCurrentUser] = useState(() => {
+                const savedUser = localStorage.getItem('currentJoyTalkUser');
+                return savedUser ? JSON.parse(savedUser) : null;
+            });
             const [currentView, setCurrentView] = useState('dashboard');
-            const [learningLevel, setLearningLevel] = useState(localStorage.getItem('learningLevel') || '');
-            const [showLevelSelector, setShowLevelSelector] = useState(!localStorage.getItem('learningLevel'));
+            const [learningLevel, setLearningLevel] = useState(() => {
+                if (!currentUser) return '';
+                return localStorage.getItem(`user_${currentUser.id}_learningLevel`) || '';
+            });
+            const [showLevelSelector, setShowLevelSelector] = useState(() => {
+                if (!currentUser) return false;
+                return !localStorage.getItem(`user_${currentUser.id}_learningLevel`);
+            });
+
+            const handleLogin = (user) => {
+                setCurrentUser(user);
+                localStorage.setItem('currentJoyTalkUser', JSON.stringify(user));
+                
+                // 사용자별 레벨 불러오기
+                const userLevel = localStorage.getItem(`user_${user.id}_learningLevel`) || '';
+                setLearningLevel(userLevel);
+                setShowLevelSelector(!userLevel);
+            };
+
+            const handleLogout = () => {
+                if (confirm('로그아웃 하시겠어요?')) {
+                    localStorage.removeItem('currentJoyTalkUser');
+                    setCurrentUser(null);
+                    setCurrentView('dashboard');
+                }
+            };
 
             const handleLevelSelect = (level) => {
                 setLearningLevel(level);
-                localStorage.setItem('learningLevel', level);
+                localStorage.setItem(`user_${currentUser.id}_learningLevel`, level);
                 setShowLevelSelector(false);
                 
                 // 포인트 초기화
-                if (!localStorage.getItem('joyPoints')) {
-                    localStorage.setItem('joyPoints', '0');
+                if (!localStorage.getItem(`user_${currentUser.id}_joyPoints`)) {
+                    localStorage.setItem(`user_${currentUser.id}_joyPoints`, '0');
                 }
             };
+
+            // 로그인하지 않은 경우 로그인 화면 표시
+            if (!currentUser) {
+                return <LoginScreen onLogin={handleLogin} />;
+            }
 
             return (
                 <main className="min-h-screen bg-gray-50">
@@ -1914,7 +2086,24 @@
                                         </span>
                                     )}
                                 </div>
-                                <div className="flex items-center space-x-1">
+                                <div className="flex items-center space-x-3">
+                                    {/* 사용자 정보 */}
+                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-full">
+                                        <span className="text-sm font-medium text-gray-700">👤 {currentUser.username}</span>
+                                    </div>
+                                    {/* 로그아웃 버튼 */}
+                                    <button
+                                        onClick={handleLogout}
+                                        className="px-3 py-1.5 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                        title="로그아웃"
+                                    >
+                                        🚪 로그아웃
+                                    </button>
+                                </div>
+                            </div>
+                            {/* 네비게이션 메뉴 */}
+                            <div className="flex border-t border-gray-100 -mb-px">
+                                <div className="flex items-center space-x-1 py-2">
                                     <nav className="flex space-x-1">
                                         <button
                                             onClick={() => setCurrentView('dashboard')}
@@ -1994,7 +2183,7 @@
 
                     {/* Main Content */}
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                        {currentView === 'dashboard' && <StudyDashboard />}
+                        {currentView === 'dashboard' && <StudyDashboard userId={currentUser.id} />}
                         {currentView === 'vocabulary' && <VocabularyLearning />}
                         {currentView === 'pronunciation' && <PronunciationPractice />}
                         {currentView === 'ai-tutor' && <AITutorChat />}
