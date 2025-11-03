@@ -1948,6 +1948,110 @@
         }
 
         function Community({ userId }) {
+            const [activeModal, setActiveModal] = useState(null); // 'review', 'challenge', 'qa'
+            const [reviewText, setReviewText] = useState('');
+            const [qaTitle, setQaTitle] = useState('');
+            const [qaContent, setQaContent] = useState('');
+            const [selectedChallenge, setSelectedChallenge] = useState(null);
+            
+            // 사용자 이름 가져오기
+            const currentUser = JSON.parse(localStorage.getItem('currentJoyLingoUser'));
+            const username = currentUser?.username || '익명';
+            
+            // 저장된 데이터 불러오기
+            const [reviews, setReviews] = useState(() => {
+                return JSON.parse(localStorage.getItem('communityReviews') || '[]');
+            });
+            const [questions, setQuestions] = useState(() => {
+                return JSON.parse(localStorage.getItem('communityQuestions') || '[]');
+            });
+            const [userChallenges, setUserChallenges] = useState(() => {
+                return UserStorage.get(userId, 'challenges', []);
+            });
+            
+            // 챌린지 목록
+            const challenges = [
+                { id: 1, title: '7일 연속 학습 챌린지', desc: '하루도 빠지지 말고 7일 연속 학습하기', reward: '🔥 열정 배지', duration: '7일' },
+                { id: 2, title: '단어 100개 마스터', desc: '퀴즈로 100단어 학습하기', reward: '📚 단어왕 배지', duration: '자유' },
+                { id: 3, title: '완벽한 발음 챌린지', desc: '발음 점수 90점 이상 10회 달성', reward: '🎤 발음왕 배지', duration: '자유' },
+                { id: 4, title: '목표 달성 챌린지', desc: '오늘의 목표 10개 완료하기', reward: '🎯 목표왕 배지', duration: '자유' }
+            ];
+            
+            // 학습 후기 제출
+            const handleSubmitReview = () => {
+                if (!reviewText.trim()) {
+                    alert('후기 내용을 입력해주세요!');
+                    return;
+                }
+                
+                const newReview = {
+                    id: Date.now(),
+                    author: username,
+                    userId: userId,
+                    content: reviewText,
+                    likes: 0,
+                    comments: 0,
+                    date: new Date().toISOString()
+                };
+                
+                const updatedReviews = [newReview, ...reviews];
+                setReviews(updatedReviews);
+                localStorage.setItem('communityReviews', JSON.stringify(updatedReviews));
+                
+                setReviewText('');
+                setActiveModal(null);
+                alert('후기가 등록되었습니다! 🎉');
+            };
+            
+            // 챌린지 참여
+            const handleJoinChallenge = (challenge) => {
+                if (userChallenges.find(c => c.id === challenge.id)) {
+                    alert('이미 참여 중인 챌린지예요!');
+                    return;
+                }
+                
+                const newChallenge = {
+                    ...challenge,
+                    joinedAt: new Date().toISOString(),
+                    progress: 0
+                };
+                
+                const updatedChallenges = [...userChallenges, newChallenge];
+                setUserChallenges(updatedChallenges);
+                UserStorage.set(userId, 'challenges', updatedChallenges);
+                
+                setActiveModal(null);
+                alert(`${challenge.title}에 참여하셨어요! 화이팅! 💪`);
+            };
+            
+            // Q&A 질문 제출
+            const handleSubmitQuestion = () => {
+                if (!qaTitle.trim() || !qaContent.trim()) {
+                    alert('제목과 내용을 모두 입력해주세요!');
+                    return;
+                }
+                
+                const newQuestion = {
+                    id: Date.now(),
+                    author: username,
+                    userId: userId,
+                    title: qaTitle,
+                    content: qaContent,
+                    answers: 0,
+                    likes: 0,
+                    date: new Date().toISOString()
+                };
+                
+                const updatedQuestions = [newQuestion, ...questions];
+                setQuestions(updatedQuestions);
+                localStorage.setItem('communityQuestions', JSON.stringify(updatedQuestions));
+                
+                setQaTitle('');
+                setQaContent('');
+                setActiveModal(null);
+                alert('질문이 등록되었습니다! 곧 답변이 달릴 거예요! 😊');
+            };
+            
             return (
                 <div className="space-y-6">
                     <h2 className="text-3xl font-bold text-gray-800 mb-6">🌍 커뮤니티</h2>
@@ -1999,7 +2103,10 @@
                             <div className="text-5xl mb-3">📝</div>
                             <h3 className="text-xl font-bold text-gray-800 mb-2">학습 후기</h3>
                             <p className="text-gray-600 mb-4">나의 학습 경험을 공유해보세요</p>
-                            <button className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition">
+                            <button 
+                                onClick={() => setActiveModal('review')}
+                                className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition"
+                            >
                                 후기 쓰기
                             </button>
                         </div>
@@ -2007,7 +2114,10 @@
                             <div className="text-5xl mb-3">🏆</div>
                             <h3 className="text-xl font-bold text-gray-800 mb-2">챌린지</h3>
                             <p className="text-gray-600 mb-4">다른 학습자들과 함께 도전!</p>
-                            <button className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition">
+                            <button 
+                                onClick={() => setActiveModal('challenge')}
+                                className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition"
+                            >
                                 참여하기
                             </button>
                         </div>
@@ -2015,31 +2125,183 @@
                             <div className="text-5xl mb-3">💭</div>
                             <h3 className="text-xl font-bold text-gray-800 mb-2">Q&A</h3>
                             <p className="text-gray-600 mb-4">궁금한 점을 질문하세요</p>
-                            <button className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition">
+                            <button 
+                                onClick={() => setActiveModal('qa')}
+                                className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition"
+                            >
                                 질문하기
                             </button>
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl p-6 shadow-lg">
-                        <h3 className="text-xl font-bold text-gray-800 mb-4">최근 게시글</h3>
-                        <div className="space-y-4">
-                            {[
-                                { title: '3개월 만에 토익 200점 올렸어요!', author: '영어조아', likes: 24, comments: 8 },
-                                { title: 'Joy와 함께한 30일 후기', author: '꾸준이', likes: 18, comments: 5 },
-                                { title: '발음 교정 팁 공유합니다', author: '발음왕', likes: 15, comments: 12 }
-                            ].map((post, idx) => (
-                                <div key={idx} className="p-4 border border-gray-200 rounded-lg hover:border-pink-300 transition cursor-pointer">
-                                    <h4 className="font-bold text-gray-800 mb-2">{post.title}</h4>
-                                    <div className="flex items-center gap-4 text-sm text-gray-600">
-                                        <span>{post.author}</span>
-                                        <span>❤️ {post.likes}</span>
-                                        <span>💬 {post.comments}</span>
+                    {/* 최근 후기 */}
+                    {reviews.length > 0 && (
+                        <div className="bg-white rounded-xl p-6 shadow-lg">
+                            <h3 className="text-xl font-bold text-gray-800 mb-4">📝 최근 학습 후기</h3>
+                            <div className="space-y-4">
+                                {reviews.slice(0, 5).map((review) => (
+                                    <div key={review.id} className="p-4 border border-gray-200 rounded-lg hover:border-pink-300 transition">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="font-bold text-gray-800">{review.author}</span>
+                                            <span className="text-xs text-gray-500">
+                                                {new Date(review.date).toLocaleDateString('ko-KR')}
+                                            </span>
+                                        </div>
+                                        <p className="text-gray-700 text-sm">{review.content}</p>
+                                        <div className="flex items-center gap-4 text-sm text-gray-600 mt-2">
+                                            <span>❤️ {review.likes}</span>
+                                            <span>💬 {review.comments}</span>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )}
+                    
+                    {/* 최근 질문 */}
+                    {questions.length > 0 && (
+                        <div className="bg-white rounded-xl p-6 shadow-lg">
+                            <h3 className="text-xl font-bold text-gray-800 mb-4">💭 최근 질문</h3>
+                            <div className="space-y-4">
+                                {questions.slice(0, 5).map((q) => (
+                                    <div key={q.id} className="p-4 border border-gray-200 rounded-lg hover:border-pink-300 transition cursor-pointer">
+                                        <h4 className="font-bold text-gray-800 mb-1">{q.title}</h4>
+                                        <p className="text-sm text-gray-600 mb-2">{q.content}</p>
+                                        <div className="flex items-center gap-4 text-sm text-gray-500">
+                                            <span>{q.author}</span>
+                                            <span>💬 {q.answers}개 답변</span>
+                                            <span>❤️ {q.likes}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    
+                    {/* 모달들 */}
+                    {activeModal && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setActiveModal(null)}>
+                            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                                {/* 학습 후기 모달 */}
+                                {activeModal === 'review' && (
+                                    <div className="p-6">
+                                        <h2 className="text-2xl font-bold mb-4">📝 학습 후기 작성</h2>
+                                        <textarea
+                                            value={reviewText}
+                                            onChange={(e) => setReviewText(e.target.value)}
+                                            placeholder="JoyLingo와 함께한 학습 경험을 공유해주세요!&#10;&#10;예시:&#10;- 어떤 점이 도움이 되었나요?&#10;- 얼마나 실력이 향상되었나요?&#10;- 다른 학습자들에게 추천하고 싶은 기능은?"
+                                            className="w-full h-48 p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none"
+                                        />
+                                        <div className="flex gap-3 mt-4">
+                                            <button
+                                                onClick={handleSubmitReview}
+                                                className="flex-1 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition font-medium"
+                                            >
+                                                등록하기
+                                            </button>
+                                            <button
+                                                onClick={() => setActiveModal(null)}
+                                                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                                            >
+                                                취소
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {/* 챌린지 모달 */}
+                                {activeModal === 'challenge' && (
+                                    <div className="p-6">
+                                        <h2 className="text-2xl font-bold mb-4">🏆 챌린지 참여하기</h2>
+                                        <div className="space-y-4">
+                                            {challenges.map((challenge) => {
+                                                const isJoined = userChallenges.find(c => c.id === challenge.id);
+                                                return (
+                                                    <div key={challenge.id} className={`p-4 border-2 rounded-lg ${isJoined ? 'border-pink-500 bg-pink-50' : 'border-gray-200'}`}>
+                                                        <div className="flex items-start justify-between mb-2">
+                                                            <h3 className="font-bold text-lg text-gray-800">{challenge.title}</h3>
+                                                            {isJoined && (
+                                                                <span className="px-3 py-1 bg-pink-500 text-white text-xs rounded-full">
+                                                                    참여 중
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-gray-600 text-sm mb-2">{challenge.desc}</p>
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="text-sm text-gray-500">
+                                                                <span className="mr-3">⏱️ {challenge.duration}</span>
+                                                                <span>{challenge.reward}</span>
+                                                            </div>
+                                                            {!isJoined && (
+                                                                <button
+                                                                    onClick={() => handleJoinChallenge(challenge)}
+                                                                    className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition text-sm"
+                                                                >
+                                                                    참여하기
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        <button
+                                            onClick={() => setActiveModal(null)}
+                                            className="w-full mt-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                                        >
+                                            닫기
+                                        </button>
+                                    </div>
+                                )}
+                                
+                                {/* Q&A 모달 */}
+                                {activeModal === 'qa' && (
+                                    <div className="p-6">
+                                        <h2 className="text-2xl font-bold mb-4">💭 질문하기</h2>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    제목
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={qaTitle}
+                                                    onChange={(e) => setQaTitle(e.target.value)}
+                                                    placeholder="질문 제목을 입력하세요"
+                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    내용
+                                                </label>
+                                                <textarea
+                                                    value={qaContent}
+                                                    onChange={(e) => setQaContent(e.target.value)}
+                                                    placeholder="궁금한 점을 자세히 설명해주세요"
+                                                    className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-3 mt-4">
+                                            <button
+                                                onClick={handleSubmitQuestion}
+                                                className="flex-1 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition font-medium"
+                                            >
+                                                질문 등록
+                                            </button>
+                                            <button
+                                                onClick={() => setActiveModal(null)}
+                                                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                                            >
+                                                취소
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         }
