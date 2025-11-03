@@ -446,8 +446,10 @@
             const [quizIndex, setQuizIndex] = useState(0);
             const [selectedAnswer, setSelectedAnswer] = useState(null);
             const [showResult, setShowResult] = useState(false);
-            const [score, setScore] = useState(0);
+            const [score, setScore] = useState(() => UserStorage.get(userId, 'quizScore', 0));
             const [options, setOptions] = useState([]);
+            const [totalQuizzes, setTotalQuizzes] = useState(() => UserStorage.get(userId, 'totalQuizzes', 0));
+            const [correctAnswers, setCorrectAnswers] = useState(() => UserStorage.get(userId, 'correctAnswers', 0));
 
             // 퀴즈 옵션 생성
             const generateOptions = (correctAnswer, allCards) => {
@@ -470,13 +472,28 @@
             };
 
             const handleNextQuiz = () => {
+                const isCorrect = selectedAnswer === vocabularyCards[quizIndex].meaning;
+                const finalScore = score + (isCorrect ? 1 : 0);
+                
                 if (quizIndex < vocabularyCards.length - 1) {
                     setQuizIndex(quizIndex + 1);
                     setSelectedAnswer(null);
                     setShowResult(false);
                     setOptions(generateOptions(vocabularyCards[quizIndex + 1].meaning, vocabularyCards));
                 } else {
-                    alert(`퀴즈 완료! 최종 점수: ${score + (selectedAnswer === vocabularyCards[quizIndex].meaning ? 1 : 0)}/${vocabularyCards.length}`);
+                    // 퀴즈 완료 - 사용자별로 결과 저장
+                    const newTotalQuizzes = totalQuizzes + vocabularyCards.length;
+                    const newCorrectAnswers = correctAnswers + finalScore;
+                    
+                    setTotalQuizzes(newTotalQuizzes);
+                    setCorrectAnswers(newCorrectAnswers);
+                    
+                    UserStorage.set(userId, 'totalQuizzes', newTotalQuizzes);
+                    UserStorage.set(userId, 'correctAnswers', newCorrectAnswers);
+                    UserStorage.set(userId, 'lastQuizScore', finalScore);
+                    
+                    alert(`퀴즈 완료! 최종 점수: ${finalScore}/${vocabularyCards.length}\n\n누적 정답률: ${Math.round((newCorrectAnswers / newTotalQuizzes) * 100)}%`);
+                    
                     setQuizIndex(0);
                     setScore(0);
                     setSelectedAnswer(null);
@@ -1369,6 +1386,14 @@
             const [feedback, setFeedback] = useState(null);
             const [activeTab, setActiveTab] = useState('word'); // 'word' or 'sentence'
             const [recognizedText, setRecognizedText] = useState('');
+            const [pronunciationScores, setPronunciationScores] = useState(() => 
+                UserStorage.get(userId, 'pronunciationScores', [])
+            );
+            const [averageScore, setAverageScore] = useState(() => {
+                const scores = UserStorage.get(userId, 'pronunciationScores', []);
+                if (scores.length === 0) return 0;
+                return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+            });
             
             const practiceWords = [
                 { id: 1, word: 'pronunciation', phonetic: '/prəˌnʌnsiˈeɪʃn/', meaning: '발음', difficulty: '초급' },
@@ -1493,6 +1518,15 @@
                     const score = calculateSimilarity(targetText, transcript);
                     const feedbackData = generateFeedback(score, targetText, transcript);
                     
+                    // 점수 저장 (최근 20개만 유지)
+                    const newScores = [...pronunciationScores, score].slice(-20);
+                    setPronunciationScores(newScores);
+                    UserStorage.set(userId, 'pronunciationScores', newScores);
+                    
+                    // 평균 점수 업데이트
+                    const newAverage = Math.round(newScores.reduce((a, b) => a + b, 0) / newScores.length);
+                    setAverageScore(newAverage);
+                    
                     setFeedback(feedbackData);
                     setIsRecording(false);
                 };
@@ -1536,16 +1570,23 @@
                         <div className="flex items-center justify-between">
                             <div>
                                 <h3 className="text-sm font-medium text-gray-600 mb-1">평균 발음 점수</h3>
-                                <div className="text-3xl font-bold text-pink-600">82 <span className="text-lg text-gray-500">/ 100</span></div>
+                                <div className="text-3xl font-bold text-pink-600">
+                                    {averageScore > 0 ? averageScore : '--'} <span className="text-lg text-gray-500">/ 100</span>
+                                </div>
                             </div>
                             <div className="text-right">
-                                <div className="text-sm text-gray-600 mb-1">이번 주 진도</div>
-                                <div className="text-2xl font-bold text-pink-500">+5%</div>
+                                <div className="text-sm text-gray-600 mb-1">연습 횟수</div>
+                                <div className="text-2xl font-bold text-pink-500">{pronunciationScores.length}회</div>
                             </div>
                         </div>
                         <div className="mt-3 w-full bg-gray-200 rounded-full h-2">
-                            <div className="bg-pink-500 h-2 rounded-full" style={{width: '82%'}}></div>
+                            <div className="bg-pink-500 h-2 rounded-full transition-all" style={{width: `${averageScore}%`}}></div>
                         </div>
+                        {pronunciationScores.length === 0 && (
+                            <p className="mt-2 text-xs text-gray-500 text-center">
+                                아직 연습한 기록이 없어요. 단어를 선택하고 발음해보세요! 🎤
+                            </p>
+                        )}
                     </div>
                     
                     {/* 탭 선택 */}
