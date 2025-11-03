@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JoyTalk - 즐거운 영어 학습</title>
+    <title>JoyLingo - Joy와 함께하는 영어 학습</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -160,7 +160,7 @@
                                 </div>
                                 <div className="text-center bg-gray-50 rounded-lg px-5 py-3 border border-gray-200 min-w-[80px]">
                                     <div className="text-xs text-gray-500 uppercase tracking-wide">포인트</div>
-                                    <div className="text-xl font-bold text-pink-500 mt-1">{localStorage.getItem('joyPoints') || 0}</div>
+                                    <div className="text-xl font-bold text-pink-500 mt-1">{UserStorage.get(userId, 'joyPoints', 0)}</div>
                                 </div>
                             </div>
                         </div>
@@ -171,10 +171,10 @@
                         <div className="flex items-center justify-between mb-4">
                             <div>
                                 <h3 className="text-lg font-bold text-gray-900">🏆 나의 레벨</h3>
-                                <p className="text-sm text-gray-600">Level {localStorage.getItem('userLevel') || 1} - {learningLevel}</p>
+                                <p className="text-sm text-gray-600">Level {UserStorage.get(userId, 'userLevel', 1)} - {learningLevel}</p>
                             </div>
                             <div className="text-right">
-                                <div className="text-2xl font-bold text-pink-500">{localStorage.getItem('joyPoints') || 0} P</div>
+                                <div className="text-2xl font-bold text-pink-500">{UserStorage.get(userId, 'joyPoints', 0)} P</div>
                                 <div className="text-xs text-gray-500">전체 랭킹 #15</div>
                             </div>
                         </div>
@@ -402,8 +402,8 @@
             );
         }
 
-        function VocabularyLearning() {
-            const learningLevel = localStorage.getItem('learningLevel') || '중급';
+        function VocabularyLearning({ userId }) {
+            const learningLevel = UserStorage.get(userId, 'learningLevel', '중급');
             
             // 레벨별 단어 데이터
             const vocabularyByLevel = {
@@ -653,7 +653,7 @@
             );
         }
 
-        function AITutorChat() {
+        function AITutorChat({ userId }) {
             const [activeTab, setActiveTab] = useState('chat'); // 'chat' or 'roleplay'
             const [messages, setMessages] = useState([
                 { role: 'assistant', content: '안녕하세요! 저는 Joy예요! 😊✨\n\n영어 학습을 즐겁게 도와드릴게요!\n\n저에게 이렇게 물어보세요:\n• "식당에서" - 상황별 영어 표현\n• "배고파" - 한국어를 영어로 번역\n• "과거완료 설명해줘" - 문법 설명\n• "안녕" - 자유로운 대화\n\n함께 즐겁게 배워봐요! 💕' }
@@ -1169,7 +1169,7 @@
             );
         }
 
-        function MyPage({ learningLevel, onLevelChange }) {
+        function MyPage({ userId, learningLevel, onLevelChange }) {
             const [showLevelModal, setShowLevelModal] = useState(false);
 
             const handleLevelChangeClick = (level) => {
@@ -1292,7 +1292,7 @@
         }
 
         // 새로운 컴포넌트들
-        function GrowthReport() {
+        function GrowthReport({ userId }) {
             const [weeklyData, setWeeklyData] = useState([10, 25, 35, 45, 60, 75, 90]);
             
             return (
@@ -1362,7 +1362,7 @@
         }
 
 
-        function PronunciationPractice() {
+        function PronunciationPractice({ userId }) {
             const [selectedWord, setSelectedWord] = useState(null);
             const [selectedSentence, setSelectedSentence] = useState(null);
             const [isRecording, setIsRecording] = useState(false);
@@ -1621,6 +1621,19 @@
                                                 <div className="text-3xl font-bold text-gray-900 mb-2">{selectedWord.word}</div>
                                                 <div className="text-lg text-gray-600 mb-1">{selectedWord.phonetic}</div>
                                                 <div className="text-sm text-gray-500">{selectedWord.meaning}</div>
+                                                
+                                                {/* 발음 듣기 버튼 */}
+                                                <button
+                                                    onClick={() => {
+                                                        const utterance = new SpeechSynthesisUtterance(selectedWord.word);
+                                                        utterance.lang = 'en-US';
+                                                        utterance.rate = 0.8;
+                                                        window.speechSynthesis.speak(utterance);
+                                                    }}
+                                                    className="mt-3 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-sm"
+                                                >
+                                                    🔊 발음 듣기
+                                                </button>
                                             </div>
                                             
                                             <div className="flex flex-col items-center gap-4">
@@ -1705,7 +1718,20 @@
                                         <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
                                             <div className="text-center mb-6">
                                                 <div className="text-2xl font-bold text-gray-900 mb-2">{selectedSentence.text}</div>
-                                                <div className="text-base text-gray-500">{selectedSentence.meaning}</div>
+                                                <div className="text-base text-gray-500 mb-3">{selectedSentence.meaning}</div>
+                                                
+                                                {/* 발음 듣기 버튼 */}
+                                                <button
+                                                    onClick={() => {
+                                                        const utterance = new SpeechSynthesisUtterance(selectedSentence.text);
+                                                        utterance.lang = 'en-US';
+                                                        utterance.rate = 0.8;
+                                                        window.speechSynthesis.speak(utterance);
+                                                    }}
+                                                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-sm"
+                                                >
+                                                    🔊 문장 듣기
+                                                </button>
                                             </div>
                                             
                                             <div className="flex flex-col items-center gap-4">
@@ -1759,7 +1785,7 @@
             );
         }
 
-        function Community() {
+        function Community({ userId }) {
             return (
                 <div className="space-y-6">
                     <h2 className="text-3xl font-bold text-gray-800 mb-6">🌍 커뮤니티</h2>
@@ -1870,7 +1896,7 @@
                     return;
                 }
 
-                const users = JSON.parse(localStorage.getItem('joyTalkUsers') || '[]');
+                const users = JSON.parse(localStorage.getItem('joyLingoUsers') || '[]');
                 
                 if (isLogin) {
                     // 로그인
@@ -1892,7 +1918,7 @@
                             createdAt: new Date().toISOString()
                         };
                         users.push(newUser);
-                        localStorage.setItem('joyTalkUsers', JSON.stringify(users));
+                        localStorage.setItem('joyLingoUsers', JSON.stringify(users));
                         onLogin(newUser);
                     }
                 }
@@ -1901,11 +1927,11 @@
             return (
                 <div className="min-h-screen joy-gradient flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
-                        <div className="text-center mb-8">
-                            <div className="text-7xl mb-4 joy-float">😊</div>
-                            <h1 className="text-4xl font-bold joy-text-gradient mb-2">JoyTalk</h1>
-                            <p className="text-gray-600">즐거운 영어 학습</p>
-                        </div>
+                    <div className="text-center mb-8">
+                        <div className="text-7xl mb-4 joy-float">😊</div>
+                        <h1 className="text-4xl font-bold joy-text-gradient mb-2">JoyLingo</h1>
+                        <p className="text-gray-600">Joy와 함께하는 영어 학습</p>
+                    </div>
 
                         <div className="flex gap-2 mb-6">
                             <button
@@ -1979,7 +2005,7 @@
         // Main App Component
         function App() {
             const [currentUser, setCurrentUser] = useState(() => {
-                const savedUser = localStorage.getItem('currentJoyTalkUser');
+                const savedUser = localStorage.getItem('currentJoyLingoUser');
                 return savedUser ? JSON.parse(savedUser) : null;
             });
             const [currentView, setCurrentView] = useState('dashboard');
@@ -1994,7 +2020,7 @@
 
             const handleLogin = (user) => {
                 setCurrentUser(user);
-                localStorage.setItem('currentJoyTalkUser', JSON.stringify(user));
+                localStorage.setItem('currentJoyLingoUser', JSON.stringify(user));
                 
                 // 사용자별 레벨 불러오기
                 const userLevel = localStorage.getItem(`user_${user.id}_learningLevel`) || '';
@@ -2003,10 +2029,11 @@
             };
 
             const handleLogout = () => {
-                if (confirm('로그아웃 하시겠어요?')) {
-                    localStorage.removeItem('currentJoyTalkUser');
+                if (confirm('로그아웃 하시겠어요? (학습 데이터는 안전하게 보관됩니다)')) {
+                    localStorage.removeItem('currentJoyLingoUser');
                     setCurrentUser(null);
                     setCurrentView('dashboard');
+                    setLearningLevel('');
                 }
             };
 
@@ -2035,7 +2062,7 @@
                                 <div className="text-center mb-6">
                                     <div className="text-7xl mb-4 joy-float">😊</div>
                                     <h2 className="text-4xl font-bold joy-text-gradient mb-3">
-                                        JoyTalk에 오신 것을 환영해요!
+                                        JoyLingo에 오신 것을 환영해요!
                                     </h2>
                                     <p className="text-gray-600">
                                         학습 레벨을 선택해주세요<br/>
@@ -2069,16 +2096,16 @@
                         </div>
                     )}
 
-                    {/* JoyTalk Header */}
+                    {/* JoyLingo Header */}
                     <header className="bg-white shadow-sm border-b border-gray-200">
                         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                             <div className="flex justify-between items-center h-16">
                                 <div className="flex items-center gap-3">
                                     <div>
                                         <h1 className="text-2xl font-bold text-gray-900">
-                                            JoyTalk
+                                            JoyLingo
                                         </h1>
-                                        <p className="text-xs text-gray-500">즐거운 영어 학습</p>
+                                        <p className="text-xs text-gray-500">Joy와 함께하는 영어</p>
                                     </div>
                                     {learningLevel && (
                                         <span className="ml-3 px-3 py-1 bg-pink-50 text-pink-600 rounded-full text-xs font-medium border border-pink-200">
@@ -2184,22 +2211,22 @@
                     {/* Main Content */}
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                         {currentView === 'dashboard' && <StudyDashboard userId={currentUser.id} />}
-                        {currentView === 'vocabulary' && <VocabularyLearning />}
-                        {currentView === 'pronunciation' && <PronunciationPractice />}
-                        {currentView === 'ai-tutor' && <AITutorChat />}
-                        {currentView === 'growth' && <GrowthReport />}
-                        {currentView === 'community' && <Community />}
-                        {currentView === 'mypage' && <MyPage learningLevel={learningLevel} onLevelChange={handleLevelSelect} />}
+                        {currentView === 'vocabulary' && <VocabularyLearning userId={currentUser.id} />}
+                        {currentView === 'pronunciation' && <PronunciationPractice userId={currentUser.id} />}
+                        {currentView === 'ai-tutor' && <AITutorChat userId={currentUser.id} />}
+                        {currentView === 'growth' && <GrowthReport userId={currentUser.id} />}
+                        {currentView === 'community' && <Community userId={currentUser.id} />}
+                        {currentView === 'mypage' && <MyPage userId={currentUser.id} learningLevel={learningLevel} onLevelChange={handleLevelSelect} />}
                     </div>
 
                     {/* Footer */}
                     <footer className="bg-white border-t border-gray-200 mt-12 py-8">
                         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">JoyTalk</h3>
-                            <p className="text-sm text-gray-600 mb-1">즐거운 영어 학습, Joy와 함께하세요!</p>
-                            <p className="text-xs text-gray-500 mb-4">Joyful, Consistent Learning</p>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">JoyLingo</h3>
+                            <p className="text-sm text-gray-600 mb-1">Joy와 함께하는 영어 학습 플랫폼</p>
+                            <p className="text-xs text-gray-500 mb-4">Learn with Joy, Speak with Confidence</p>
                             <div className="text-xs text-gray-400">
-                                © 2024 JoyTalk. Learn with Joy, Speak with Confidence.
+                                © 2024 JoyLingo. Powered by Joy 😊
                             </div>
                         </div>
                     </footer>
